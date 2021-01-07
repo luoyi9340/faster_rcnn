@@ -1,0 +1,95 @@
+#   手写字母识别（tensorflow2练手程序）
+dataset:
+   #   训练集相关配置
+   in_train: /Users/irenebritney/Desktop/vcode/dataset/num_letter/train
+   count_train: 10
+   label_train: /Users/irenebritney/Desktop/vcode/dataset/num_letter/train.txt
+   #   验证集相关配置
+   in_val: /Users/irenebritney/Desktop/vcode/dataset/num_letter/val
+   count_val: 10
+   label_val: /Users/irenebritney/Desktop/vcode/dataset/num_letter/val.txt
+   #   测试集相关配置
+   in_test: /Users/irenebritney/Desktop/vcode/dataset/num_letter/test
+   count_test: 10
+   label_test: /Users/irenebritney/Desktop/vcode/dataset/num_letter/test.txt
+   
+
+#   rpn网络相关配置
+rpn:
+   #   每张图片生成的用于训练的roi矩形框信息（每个图片一个json，包含图片的roi矩形框）
+   #   json格式：{file_name:"文件名", vcode:"验证码", positives:[((x,y,w,h), (v, x,y,w,h))...], negative:[(x,y,w,h), ...]}
+   train_rois_out: temp/rois_train.jsons
+   val_rois_out: temp/rois_val.jsons
+   test_rois_out: temp/rois_test.jsons
+   #   判定为正样本的iou比率（与某个label的IOU大于该值）
+   train_positives_iou: 0.6
+   #   判定为负样本的iou比率（与所有label的IOU都小于该值）
+   train_negative_iou: 0.3
+   #   每张图片多少个正样本（超过的IoU降序取前多少个，不够的补IoU=-1的数据）
+   train_positives_every_image: 128
+   #   每张图片多少个负样本（不够的补IoU=-1的数据）
+   train_negative_every_image: 128
+   #   训练时每次取多少张图片
+   train_batch_size: 2
+   #   训练多少个epochs
+   train_epochs: 5
+   #   Loss_cls + λ*Loss_reg中间的λ
+   loss_lamda: 10
+   #   模型保存（中间占位符表示用的什么cnns）
+   save_weights_dir: models
+   #   tensorboard目录
+   tensorboard_dir: logs/tensorboard/rpn
+   #   roi 面积大小（想不通原生faster_rcc为什么只用了9种anchor就能较好覆盖gt。。。） 
+   roi_areas:
+      - 64 
+      - 68
+      - 72
+      - 76
+      - 84
+   #   - 92
+   #   - 96
+   #   - 104
+   #   - 112
+   #   - 120
+   #   - 128
+   #   roi w:h 比例（与原生faster_cnn要识别的图不一样。我的数据集中只有验证码，而且每个验证码gt框都是80*100这样大小的）
+   roi_scales:
+   #   - 0.5
+      - 0.75
+      - 1
+      - 1.5
+   #   - 2
+   #   用的什么cnns网络（resnet32 | resnet50）
+   cnns: resnet34
+   
+      
+      
+#   CNNs网络相关配置
+cnns:
+   #   cnns层缩放比例（特征图相对原图缩放比例。相比原生CNN，我的数据集图比较小，特征图再缩到很小就没什么点来生成anchors了）
+   feature_map_scaling: 16
+   
+   
+   
+#   日志相关配置
+logs:
+   #   数据集相关日志
+   data_rois_creator: 
+      #   日志输出级别
+      level: "INFO"
+      #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+      out: "logs/data_rois_creator.log"
+      #   该log是否打印到控制台
+      console: true
+      #   log输出格式
+      formatter: "%(asctime)s-%(name)s-%(levelname)s-%(message)s"
+   #   数据集相关日志
+   train_rpn: 
+      #   日志输出级别
+      level: "INFO"
+      #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+      out: "logs/train_rpn.log"
+      #   该log是否打印到控制台
+      console: true
+      #   log输出格式
+      formatter: "%(asctime)s-%(name)s-%(levelname)s-%(message)s"
