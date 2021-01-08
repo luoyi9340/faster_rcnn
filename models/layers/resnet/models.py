@@ -85,11 +85,10 @@ class ResNet34(tf.keras.layers.Layer):
         '''
         super(ResNet34, self).__init__(name='ResNet34', **kwargs)
         
-        #    网络是否参与训练
-        self.trainable = training
-        
         self.__kernel_initializer = kernel_initializer
         self.__bias_initializer = bias_initializer
+        
+        self.__training = training
 
         #    根据缩放比例计算网络层数（第1层与第2层缩放比例一致，所以加1）
         self.__num_layer = int(math.log(scaling, 2)) + 1
@@ -97,58 +96,69 @@ class ResNet34(tf.keras.layers.Layer):
         
         #    装配网络
         self.__assembling(base_channel_num)
+        
         pass
     
     #    装配网络
     def __assembling(self, base_channel_num):
         #    第1层
         filters_layer1 = base_channel_num * 1
-        self.__layer1 = tf.keras.models.Sequential([
-                tf.keras.layers.ZeroPadding2D(1),
-                tf.keras.layers.Conv2D(name=self.name + '_layer1_conv1', filters=filters_layer1, kernel_size=(3, 3), strides=2, padding='valid', input_shape=(180, 480, 3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.ReLU()
-            ], name=self.name + '_layer1')
+        if (self.__num_layer >= 1):
+            self.__layer1 = tf.keras.models.Sequential([
+                    tf.keras.layers.ZeroPadding2D(1),
+                    tf.keras.layers.Conv2D(name=self.name + '_layer1_conv1', filters=filters_layer1, kernel_size=(3, 3), strides=2, padding='valid', input_shape=(180, 480, 3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    tf.keras.layers.BatchNormalization(name=self.name + '_BN1', trainable=self.__training),
+                    tf.keras.layers.ReLU(name=self.name + '_ReLU1')
+                ], name=self.name + '_layer1')
+            pass
         self.output_shape_layer1 = (90, 240, filters_layer1)
 
         #    第2层
         filters_layer2 = base_channel_num * 1
-        self.__layer2 = tf.keras.models.Sequential([
-                BasicBlock(name=self.name + '_layer2_BasicBlock1', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer1), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer2_BasicBlock2', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer2_BasicBlock3', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name=self.name + '_layer2')
+        if (self.__num_layer >= 2):
+            self.__layer2 = tf.keras.models.Sequential([
+                    BasicBlock(name=self.name + '_layer2_BasicBlock1', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer1), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer2_BasicBlock2', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer2_BasicBlock3', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name=self.name + '_layer2')
+            pass
         self.output_shape_layer2 = (90, 240, filters_layer2)
         
         #    第3层
         filters_layer3 = base_channel_num * 2
-        self.__layer3 = tf.keras.models.Sequential([
-                BasicBlock(name=self.name + '_layer3_BasicBlock1', filters=[filters_layer3, filters_layer3], strides=2, input_shape=(90, 240, filters_layer2), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer3_BasicBlock2', filters=[filters_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer3_BasicBlock3', filters=[filters_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer3_BasicBlock4', filters=[filters_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name=self.name + '_layer3')
+        if (self.__num_layer >= 3):
+            self.__layer3 = tf.keras.models.Sequential([
+                    BasicBlock(name=self.name + '_layer3_BasicBlock1', filters=[filters_layer3, filters_layer3], strides=2, input_shape=(90, 240, filters_layer2), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer3_BasicBlock2', filters=[filters_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer3_BasicBlock3', filters=[filters_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer3_BasicBlock4', filters=[filters_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name=self.name + '_layer3')
+            pass
         self.output_shape_layer3 = (45, 120, filters_layer3)
         
         #    第4层
         filters_layer4 = base_channel_num * 4
-        self.__layer4 = tf.keras.models.Sequential([
-                BasicBlock(name=self.name + '_layer4_BasicBlock1', filters=[filters_layer4, filters_layer4], strides=2, input_shape=(45, 120, filters_layer3), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer4_BasicBlock2', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer4_BasicBlock3', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer4_BasicBlock4', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer4_BasicBlock5', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer4_BasicBlock6', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name=self.name + '_layer4')
+        if (self.__num_layer >= 4):
+            self.__layer4 = tf.keras.models.Sequential([
+                    BasicBlock(name=self.name + '_layer4_BasicBlock1', filters=[filters_layer4, filters_layer4], strides=2, input_shape=(45, 120, filters_layer3), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer4_BasicBlock2', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer4_BasicBlock3', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer4_BasicBlock4', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer4_BasicBlock5', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer4_BasicBlock6', filters=[filters_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name=self.name + '_layer4')
+            pass
         self.output_shape_layer4 = (23, 60, filters_layer4)
         
         #    第5层
         filters_layer5 = base_channel_num * 8
-        self.__layer5 = tf.keras.models.Sequential([
-                BasicBlock(name=self.name + '_layer5_BasicBlock1', filters=[filters_layer5, filters_layer5], strides=2, input_shape=(23, 60, filters_layer4), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer5_BasicBlock2', filters=[filters_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                BasicBlock(name=self.name + '_layer5_BasicBlock3', filters=[filters_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name=self.name + '_layer5')
+        if (self.__num_layer >= 5):
+            self.__layer5 = tf.keras.models.Sequential([
+                    BasicBlock(name=self.name + '_layer5_BasicBlock1', filters=[filters_layer5, filters_layer5], strides=2, input_shape=(23, 60, filters_layer4), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer5_BasicBlock2', filters=[filters_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    BasicBlock(name=self.name + '_layer5_BasicBlock3', filters=[filters_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name=self.name + '_layer5')
+            pass
         self.output_shape_layer5 = (12, 30, filters_layer5)
         pass
     
@@ -272,10 +282,10 @@ class ResNet50(tf.keras.layers.Layer):
         '''
         super(ResNet50, self).__init__(name='ResNet50', **kwargs)
         
-        self.trainable = training
-        
         self.__kernel_initializer = kernel_initializer
         self.__bias_initializer = bias_initializer
+        
+        self.__training = training
         
         #    根据缩放比例计算网络层数（第1层与第2层缩放比例一致，所以加1）
         self.__num_layer = int(math.log(scaling, 2)) + 1
@@ -283,61 +293,72 @@ class ResNet50(tf.keras.layers.Layer):
         
         #    装配网络
         self.__assembling(base_channel_num)
+        
         pass
     #    装配网络
     def __assembling(self, base_channel_num=32):
         #    第1层
         filters_layer1 = base_channel_num * 1
-        self.__layer1 = tf.keras.models.Sequential([
-                tf.keras.layers.ZeroPadding2D(1),
-                tf.keras.layers.Conv2D(name=self.name + '_layer1_conv1', filters=filters_layer1, kernel_size=(3, 3), strides=2, padding='valid', input_shape=(180, 480, 3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.ReLU()
-            ], name=self.name + '_layer1')
+        if (self.__num_layer >= 1):
+            self.__layer1 = tf.keras.models.Sequential([
+                    tf.keras.layers.ZeroPadding2D(1),
+                    tf.keras.layers.Conv2D(name=self.name + '_layer1_conv1', filters=filters_layer1, kernel_size=(3, 3), strides=2, padding='valid', input_shape=(180, 480, 3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    tf.keras.layers.BatchNormalization(name=self.name + '_BN1', trainable=self.__training),
+                    tf.keras.layers.ReLU(name=self.name + '_ReLU1')
+                ], name=self.name + '_layer1')
+            pass
         self.output_shape_layer1 = (90, 240, filters_layer1)
         
         #    第2层
         filters_rdim_layer2 = base_channel_num * 1
         filters_layer2 = base_channel_num * 4
-        self.__layer2 = tf.keras.models.Sequential([
-                Bottleneck(name=self.name + '_layer2_Bottleneck1', filters=[filters_rdim_layer2, filters_rdim_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer1), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer2_Bottleneck2', filters=[filters_rdim_layer2, filters_rdim_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer2_Bottleneck3', filters=[filters_rdim_layer2, filters_rdim_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name=self.name + '_layer2')
+        if (self.__num_layer >= 2):
+            self.__layer2 = tf.keras.models.Sequential([
+                    Bottleneck(name=self.name + '_layer2_Bottleneck1', filters=[filters_rdim_layer2, filters_rdim_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer1), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer2_Bottleneck2', filters=[filters_rdim_layer2, filters_rdim_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer2_Bottleneck3', filters=[filters_rdim_layer2, filters_rdim_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer2), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name=self.name + '_layer2')
+            pass
         self.output_shape_layer2 = (90, 240, filters_layer2)
         
         #    第3层
         filters_rdim_layer3 = base_channel_num * 2
         filters_layer3 = base_channel_num * 8
-        self.__layer3 = tf.keras.models.Sequential([
-                Bottleneck(name=self.name + '_layer3_Bottleneck1', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=2, input_shape=(90, 240, filters_layer2), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer3_Bottleneck2', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer3_Bottleneck3', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer3_Bottleneck4', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name='_layer3')
+        if (self.__num_layer >= 3):
+            self.__layer3 = tf.keras.models.Sequential([
+                    Bottleneck(name=self.name + '_layer3_Bottleneck1', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=2, input_shape=(90, 240, filters_layer2), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer3_Bottleneck2', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer3_Bottleneck3', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer3_Bottleneck4', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=1, input_shape=(45, 120, filters_layer3), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name='_layer3')
+            pass
         self.output_shape_layer3 = (45, 120, filters_layer3)
         
         #    第4层
         filters_rdim_layer4 = base_channel_num * 4
         filters_layer4 = base_channel_num * 16
-        self.__layer4 = tf.keras.models.Sequential([
-                Bottleneck(name=self.name + '_layer4_Bottleneck1', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=2, input_shape=(45, 120, filters_layer3), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer4_Bottleneck2', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer4_Bottleneck3', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer4_Bottleneck4', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer4_Bottleneck5', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer4_Bottleneck6', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name=self.name + '_layer4')
+        if (self.__num_layer >= 4):
+            self.__layer4 = tf.keras.models.Sequential([
+                    Bottleneck(name=self.name + '_layer4_Bottleneck1', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=2, input_shape=(45, 120, filters_layer3), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer4_Bottleneck2', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer4_Bottleneck3', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer4_Bottleneck4', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer4_Bottleneck5', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer4_Bottleneck6', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=1, input_shape=(23, 60, filters_layer4), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name=self.name + '_layer4')
+            pass
         self.output_shape_layer4 = (23, 60, filters_layer4)
         
         #    第5层
         filters_rdim_layer5 = base_channel_num * 8
         filters_layer5 = base_channel_num * 32
-        self.__layer5 = tf.keras.models.Sequential([
-                Bottleneck(name=self.name + '_layer5_Bottleneck1', filters=[filters_rdim_layer5, filters_rdim_layer5, filters_layer5], strides=2, input_shape=(23, 60, filters_layer4), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer5_Bottleneck2', filters=[filters_rdim_layer5, filters_rdim_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                Bottleneck(name=self.name + '_layer5_Bottleneck3', filters=[filters_rdim_layer5, filters_rdim_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer)
-            ], name=self.name + '_layer5')
+        if (self.__num_layer >= 5):
+            self.__layer5 = tf.keras.models.Sequential([
+                    Bottleneck(name=self.name + '_layer5_Bottleneck1', filters=[filters_rdim_layer5, filters_rdim_layer5, filters_layer5], strides=2, input_shape=(23, 60, filters_layer4), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer5_Bottleneck2', filters=[filters_rdim_layer5, filters_rdim_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    Bottleneck(name=self.name + '_layer5_Bottleneck3', filters=[filters_rdim_layer5, filters_rdim_layer5, filters_layer5], strides=1, input_shape=(12, 30, filters_layer5), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training)
+                ], name=self.name + '_layer5')
+            pass
         self.output_shape_layer5 = (13, 30, filters_layer5)
         pass
     #    前向传播

@@ -18,17 +18,17 @@ dataset:
 rpn:
    #   每张图片生成的用于训练的roi矩形框信息（每个图片一个json，包含图片的roi矩形框）
    #   json格式：{file_name:"文件名", vcode:"验证码", positives:[((x,y,w,h), (v, x,y,w,h))...], negative:[(x,y,w,h), ...]}
-   train_rois_out: temp/rois_train.jsons
-   val_rois_out: temp/rois_val.jsons
-   test_rois_out: temp/rois_test.jsons
+   train_rois_out: temp/rois/rois_train.jsons
+   val_rois_out: temp/rois/rois_val.jsons
+   test_rois_out: temp/rois/rois_test.jsons
    #   判定为正样本的iou比率（与某个label的IOU大于该值）
-   train_positives_iou: 0.6
+   train_positives_iou: 0.7
    #   判定为负样本的iou比率（与所有label的IOU都小于该值）
    train_negative_iou: 0.3
    #   每张图片多少个正样本（超过的IoU降序取前多少个，不够的补IoU=-1的数据）
-   train_positives_every_image: 128
+   train_positives_every_image: 64
    #   每张图片多少个负样本（不够的补IoU=-1的数据）
-   train_negative_every_image: 128
+   train_negative_every_image: 64
    #   训练时每次取多少张图片
    train_batch_size: 2
    #   训练多少个epochs
@@ -36,7 +36,7 @@ rpn:
    #   Loss_cls + λ*Loss_reg中间的λ
    loss_lamda: 10
    #   模型保存（中间占位符表示用的什么cnns）
-   save_weights_dir: models
+   save_weights_dir: temp/models
    #   tensorboard目录
    tensorboard_dir: logs/tensorboard/rpn
    #   roi 面积大小（想不通原生faster_rcc为什么只用了9种anchor就能较好覆盖gt。。。） 
@@ -57,7 +57,7 @@ rpn:
    #   - 0.5
       - 0.75
       - 1
-      - 1.5
+      - 1.25
    #   - 2
    #   用的什么cnns网络（resnet32 | resnet50）
    cnns: resnet34
@@ -67,7 +67,7 @@ rpn:
 #   CNNs网络相关配置
 cnns:
    #   cnns层缩放比例（特征图相对原图缩放比例。相比原生CNN，我的数据集图比较小，特征图再缩到很小就没什么点来生成anchors了）
-   feature_map_scaling: 16
+   feature_map_scaling: 8
    
    
    

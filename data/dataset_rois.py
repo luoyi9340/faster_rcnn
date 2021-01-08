@@ -16,6 +16,10 @@ import PIL
 import data.dataset as ds
 import utils.conf as conf
 import utils.alphabet as alphabet
+import utils.logger_factory as logf
+
+
+log = logf.get_logger('data_rois_creator')
 
 
 #    生成rois
@@ -44,13 +48,15 @@ class RoisCreator():
     def create(self, 
                label_file_path=conf.DATASET.get_label_train(),
                rois_out=conf.RPN.get_train_rois_out(),
-               count=conf.DATASET.get_count_train()):
+               count=conf.DATASET.get_count_train(),
+               log_interval=100):
         fw = file_writer(rois_out=rois_out)
         
         #    迭代标签文件
         label_iterator = ds.label_file_iterator(label_file_path=label_file_path, count=count)
         #    统计信息
         num_anchors, num_positives, num_negative = 0, 0, 0
+        num = 0
         for file_name, vcode, labels in label_iterator:
             anchors = self.__create_anchors(file_name, vcode, labels, self.__train_positives_iou, self.__train_negative_iou)
             
@@ -59,6 +65,11 @@ class RoisCreator():
             num_anchors += 1
             num_positives += len(anchors['positives'])
             num_negative += len(anchors['negative'])
+            
+            num += 1
+            if (num % log_interval == 0):
+                log.info('create rois. num:%d total:%d avg_p:%f avg_n:%f', num, count, num_positives/num_anchors, num_negative/num_anchors)
+                pass
             pass
         
         fw.close()

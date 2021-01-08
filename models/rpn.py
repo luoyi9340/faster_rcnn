@@ -20,6 +20,8 @@ class RPNModel(models.AModel):
                         train_cnns=True,
                         train_rpn=True,
                         loss_lamda=10,
+                        is_build=True,
+                        input_shape=(None, conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3),
                         **kwargs):
         '''
             @param cnns_name: 使用哪个cnns网络(resnet34 | resnet50)
@@ -38,6 +40,10 @@ class RPNModel(models.AModel):
         self.__loss_lamda = loss_lamda
         
         super(RPNModel, self).__init__(name='rpn', **kwargs)
+        
+        if (is_build):
+            self._net.build(input_shape=input_shape)
+            pass
         pass
     
     #    优化器

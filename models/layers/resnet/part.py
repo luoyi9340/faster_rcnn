@@ -35,9 +35,10 @@ class BasicBlock(tf.keras.layers.Layer):
             其中：H(X)为调整X.shape与out一致
         ReLU
     '''
-    def __init__(self, name=None, filters=None, strides=1, input_shape=None, output_shape=None, kernel_initializer=None, bias_initializer=None, **kwargs):
+    def __init__(self, training=True, name=None, filters=None, strides=1, input_shape=None, output_shape=None, kernel_initializer=None, bias_initializer=None, **kwargs):
         super(BasicBlock, self).__init__(name=name, **kwargs)
         
+        self.__training = training
         
         #    规定输出格式
         self.__output_shape = output_shape
@@ -45,13 +46,13 @@ class BasicBlock(tf.keras.layers.Layer):
         #    定义两层3*3卷积
         self.__conv = tf.keras.models.Sequential([
                 tf.keras.layers.ZeroPadding2D(padding=1),
-                tf.keras.layers.Conv2D(name=name + '_Conv1', filters=filters[0], kernel_size=(3, 3), strides=strides, padding='valid', input_shape=input_shape, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.ReLU(),
+                tf.keras.layers.Conv2D(name=name + '_Conv1', filters=filters[0], kernel_size=(3, 3), strides=strides, padding='valid', input_shape=input_shape, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
+                tf.keras.layers.BatchNormalization(name=name + '_BN1', trainable=self.__training),
+                tf.keras.layers.ReLU(name=name + '_ReLU1'),
                 
                 tf.keras.layers.ZeroPadding2D(padding=1),
-                tf.keras.layers.Conv2D(name=name + '_Conv2', filters=filters[1], kernel_size=(3, 3), strides=1, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer),
-                tf.keras.layers.BatchNormalization()
+                tf.keras.layers.Conv2D(name=name + '_Conv2', filters=filters[1], kernel_size=(3, 3), strides=1, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
+                tf.keras.layers.BatchNormalization(name=name + '_BN2', trainable=self.__training)
             ])
         
         #    定义downsample。有一点原则，特征图体积缩小必然伴随通道数增加。否则体积与通道数都不变
@@ -93,9 +94,10 @@ class Bottleneck(tf.keras.layers.Layer):
             其中：H(X)为调整X.shape与out一致
         ReLU
     '''
-    def __init__(self, name=None, filters=None, strides=1, input_shape=None, output_shape=None, kernel_initializer=None, bias_initializer=None, **kwargs):
+    def __init__(self, training=True, name=None, filters=None, strides=1, input_shape=None, output_shape=None, kernel_initializer=None, bias_initializer=None, **kwargs):
         super(Bottleneck, self).__init__(name=name, **kwargs)
         
+        self.__training = training
         
         #    规定输入/输出格式
         self.__input_shape = input_shape
@@ -103,17 +105,17 @@ class Bottleneck(tf.keras.layers.Layer):
         
         #    定义1*1, 3*3, 1*1卷积
         self.__conv = tf.keras.models.Sequential([
-                tf.keras.layers.Conv2D(name=name + '_Conv0', filters=filters[0], kernel_size=(1, 1), strides=1, padding='valid', input_shape=input_shape, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer),
-                tf.keras.layers.BatchNormalization(name=name + '_BN0', ),
-                tf.keras.layers.ReLU(name=name + '_ReLU0', ),
-                
-                tf.keras.layers.ZeroPadding2D(padding=1),
-                tf.keras.layers.Conv2D(name=name + '_Conv1', filters=filters[1], kernel_size=(3, 3), strides=strides, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer),
-                tf.keras.layers.BatchNormalization(name=name + '_BN1', ),
+                tf.keras.layers.Conv2D(name=name + '_Conv1', filters=filters[0], kernel_size=(1, 1), strides=1, padding='valid', input_shape=input_shape, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
+                tf.keras.layers.BatchNormalization(name=name + '_BN1', trainable=self.__training),
                 tf.keras.layers.ReLU(name=name + '_ReLU1', ),
                 
-                tf.keras.layers.Conv2D(name=name + '_Conv2', filters=filters[2], kernel_size=(1, 1), strides=1, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer),
-                tf.keras.layers.BatchNormalization(name=name + '_BN2', )
+                tf.keras.layers.ZeroPadding2D(padding=1),
+                tf.keras.layers.Conv2D(name=name + '_Conv2', filters=filters[1], kernel_size=(3, 3), strides=strides, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
+                tf.keras.layers.BatchNormalization(name=name + '_BN2', trainable=self.__training),
+                tf.keras.layers.ReLU(name=name + '_ReLU2', ),
+                
+                tf.keras.layers.Conv2D(name=name + '_Conv3', filters=filters[2], kernel_size=(1, 1), strides=1, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
+                tf.keras.layers.BatchNormalization(name=name + '_BN3', trainable=self.__training)
             ])
         
         #    定义downsample。有一点原则，特征图体积缩小必然伴随通道数增加。否则体积与通道数都不变

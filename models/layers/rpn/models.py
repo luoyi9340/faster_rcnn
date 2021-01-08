@@ -38,8 +38,8 @@ class RPNNet(tf.keras.layers.Layer):
         '''
         super(RPNNet, self).__init__(name='RPNNet', **kwargs)
         
-        self.trainable = training
-
+        self.__training = training
+        
         #    输入shape
         self.__input_shape = input_shape
         #    特征图每个点代表多少个anchor
@@ -67,9 +67,9 @@ class RPNNet(tf.keras.layers.Layer):
         
         #    过3*3卷积
         self.__layer_conv = tf.keras.models.Sequential([
-                tf.keras.layers.Conv2D(filters=filters, kernel_size=(3, 3), strides=1, padding='same', input_shape=self.__input_shape, kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
-                tf.keras.layers.BatchNormalization(),
-                tf.keras.layers.ReLU()
+                tf.keras.layers.Conv2D(name=self.name + '_Conv1', filters=filters, kernel_size=(3, 3), strides=1, padding='same', input_shape=self.__input_shape, kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                tf.keras.layers.BatchNormalization(name=self.name + '_BN1', trainable=self.__training),
+                tf.keras.layers.ReLU(name=self.name + '_ReLU1')
             ], name=self.name + '_layer_conv')
         
         #    cls分支
@@ -78,7 +78,7 @@ class RPNNet(tf.keras.layers.Layer):
         #    ps：瞬间明白了论文中为什么要加reshape，看来学东西最有效的办法就是自己弄一遍。。。
         target_shape_cls = (self.__input_shape[0], self.__input_shape[1], 2, self.__K)
         self.__layer_cls = tf.keras.models.Sequential([
-                tf.keras.layers.Conv2D(name=self.name + '_cls_conv', filters=filters_cls, kernel_size=(1, 1), strides=1, padding='same', kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
+                tf.keras.layers.Conv2D(name=self.name + '_cls_conv', filters=filters_cls, kernel_size=(1, 1), strides=1, padding='same', kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
                 tf.keras.layers.Reshape(target_shape=target_shape_cls),         #    将输出从(batch_size, h, w, K*2)reshape为(batch_size, h, w, 2, K)的格式
                                                                                 #    下面的Softmax直接在-2维上做softmax函数
                                                                                 #    结果即为第1个K为前景概率，第2个K为背景概率。(None, h, w, 0, i) + (None, h, w, 1, i) = 1
@@ -91,7 +91,7 @@ class RPNNet(tf.keras.layers.Layer):
         filters_reg = self.__K * 4
         target_shape_reg = (self.__input_shape[0], self.__input_shape[1], 4, self.__K)
         self.__layer_reg = tf.keras.models.Sequential([
-                tf.keras.layers.Conv2D(name=self.name + '_reg_conv', filters=filters_reg, kernel_size=(1, 1), strides=1, padding='same', kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer),
+                tf.keras.layers.Conv2D(name=self.name + '_reg_conv', filters=filters_reg, kernel_size=(1, 1), strides=1, padding='same', kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
                 tf.keras.layers.Reshape(target_shape=target_shape_reg)
                 #    此时的输出为(batch_size, h, w, 4, K)
             ], name=self.name + '_layer_reg')

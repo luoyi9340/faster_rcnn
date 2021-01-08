@@ -42,7 +42,6 @@ class AModel(metaclass=abc.ABCMeta):
                           metrics=self.metrics())
 #         self._net.compile(optimizer=self.optimizer(learning_rate=learning_rate, net=self._net), 
 #                         loss=self.loss())
-        
         pass
     
     #    测试
@@ -201,6 +200,10 @@ class AModel(metaclass=abc.ABCMeta):
                                                                             period=1                        #    CheckPoint之间的间隔的epoch数
                                                                             )
             callbacks.append(auto_save_weights_callback)
+            
+            #    保存参数时一并保存此时的配置项
+            current_conf_file_path = auto_save_weights_dir + "/conf_" + self.model_name() + ".yml"
+            conf.write_conf(conf.ALL_DICT, current_conf_file_path)
             pass
         #    如果需要在训练期间动态调整学习率
         if (auto_learning_rate_schedule):

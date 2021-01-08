@@ -56,7 +56,7 @@ def load_conf_yaml():
     
     logs = Logs(c['logs'])
     
-    return dataset, rpn, cnns, logs
+    return c, dataset, rpn, cnns, logs
 
 #    验证码识别数据集。为了与Java的风格保持一致
 class Dataset:
@@ -185,5 +185,24 @@ def mkdir_ifnot_exises(_dir):
         os.makedirs(_dir)
     pass
 
+ALL_DICT, DATASET, RPN, CNNS, LOGS = load_conf_yaml()
 
-DATASET, RPN, CNNS, LOGS = load_conf_yaml()
+
+#    写入配置文件
+def write_conf(_dict, file_path):
+    '''写入当前配置项的配置文件
+        @param dict: 要写入的配置项字典
+        @param file_path: 文件path
+    '''
+    file_path = convert_to_abspath(file_path)
+    mkfiledir_ifnot_exises(file_path)
+    
+    #    存在同名文件先删除
+    if (os.path.exists(file_path)):
+        os.remove(file_path)
+        pass
+    
+    fw = open(file_path, mode='w', encoding='utf-8')
+    yaml.dump(_dict, fw)
+    fw.close()
+    pass

@@ -21,7 +21,8 @@ rpn_model = rpn.RPNModel(cnns_name=conf.RPN.get_cnns(),
                          scaling=conf.CNNS.get_feature_map_scaling(), 
                          train_cnns=True,
                          train_rpn=True,
-                         loss_lamda=conf.RPN.get_loss_lamda())
+                         loss_lamda=conf.RPN.get_loss_lamda(),
+                         is_build=True)
 log.info('rpn_model finished.')
 log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(), conf.CNNS.get_feature_map_scaling(), conf.RPN.get_loss_lamda())
 
@@ -55,6 +56,9 @@ log.info('db_val rois image_dir:%s', conf.DATASET.get_in_val())
 log.info('db_val rois rois_out:%s', conf.RPN.get_val_rois_out())
 log.info('db_val rois count_positives:%d count_negative:%d batch_size:%d', conf.RPN.get_train_positives_every_image(), conf.RPN.get_train_negative_every_image(), conf.RPN.get_train_batch_size())
 log.info('db_val:{}'.format(db_train))
+
+
+rpn_model.show_info()
 
 
 log.info('rpn_model fitting...')

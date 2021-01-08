@@ -6,12 +6,7 @@
 Created on 2020年12月29日
 '''
 
-from utils.conf import RPN
+import utils.conf as conf
 
 
-print(RPN.get_roi_areas())
-print(RPN.get_roi_scales())
-
-
-s = "aaa{}aaa{}aaa"
-print(s.format("bbb", "ccc"))
+conf.write_conf(conf.ALL_DICT, 'resources/conf_bak.yml')
