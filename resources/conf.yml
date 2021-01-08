@@ -31,6 +31,8 @@ rpn:
    train_negative_every_image: 64
    #   训练时每次取多少张图片
    train_batch_size: 2
+   #   训练时的学习率
+   train_learning_rate: 0.001
    #   训练多少个epochs
    train_epochs: 5
    #   Loss_cls + λ*Loss_reg中间的λ

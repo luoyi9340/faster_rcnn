@@ -94,7 +94,9 @@ class RPNLoss(tf.keras.losses.Loss):
         count_n = tf.cast(tf.math.count_nonzero(loss_cls_n, axis=(1,2,3,4)), dtype=tf.float32)
         loss_cls_n = tf.math.reduce_sum(loss_cls_n, axis=(1,2,3,4)) / count_n
         
-        return loss_cls_p + loss_cls_n
+        loss_cls = loss_cls_p + loss_cls_n
+#         tf.print('loss_cls:', loss_cls)
+        return loss_cls
 
 
     #    loss_reg
@@ -139,5 +141,7 @@ class RPNLoss(tf.keras.losses.Loss):
         loss_reg_p = me.smootL1_tf(ymaps_reg_p - fmaps_reg_p)
         count_p = tf.cast(tf.math.count_nonzero(loss_reg_p, axis=(1,2,3,4)), dtype=tf.float32)
         loss_reg_p = tf.math.reduce_sum(loss_reg_p, axis=(1,2,3,4)) / count_p
+        
+#         tf.print('loss_reg:', loss_reg_p)
         return loss_reg_p
     pass

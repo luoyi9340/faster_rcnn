@@ -16,6 +16,7 @@ import utils.conf as conf
 #    RPN模型
 class RPNModel(models.AModel):
     def __init__(self, cnns_name=conf.RPN.get_cnns(), 
+                        learning_rate=conf.RPN.get_train_learning_rate(),
                         scaling=conf.CNNS.get_feature_map_scaling(), 
                         train_cnns=True,
                         train_rpn=True,
@@ -39,7 +40,7 @@ class RPNModel(models.AModel):
         
         self.__loss_lamda = loss_lamda
         
-        super(RPNModel, self).__init__(name='rpn', **kwargs)
+        super(RPNModel, self).__init__(name='rpn', learning_rate=learning_rate, **kwargs)
         
         if (is_build):
             self._net.build(input_shape=input_shape)

@@ -44,6 +44,7 @@ def load_conf_yaml():
               c['rpn']['train_positives_every_image'],
               c['rpn']['train_negative_every_image'],
               c['rpn']['train_batch_size'],
+              c['rpn']['train_learning_rate'],
               c['rpn']['train_epochs'],
               c['rpn']['loss_lamda'],
               c['rpn']['save_weights_dir'],
@@ -97,6 +98,7 @@ class Rpn():
                  train_positives_every_image=256,
                  train_negative_every_image=256,
                  train_batch_size=2,
+                 train_learning_rate=0.01,
                  train_epochs=5,
                  loss_lamda=10,
                  save_weights_dir="models",
@@ -112,6 +114,7 @@ class Rpn():
         self.__train_positives_every_image = train_positives_every_image
         self.__train_negative_every_image = train_negative_every_image
         self.__train_batch_size = train_batch_size
+        self.__train_learning_rate = train_learning_rate
         self.__train_epochs = train_epochs
         self.__loss_lamda = loss_lamda
         self.__save_weights_dir = save_weights_dir
@@ -128,6 +131,7 @@ class Rpn():
     def get_train_positives_every_image(self): return self.__train_positives_every_image
     def get_train_negative_every_image(self): return self.__train_negative_every_image
     def get_train_batch_size(self): return self.__train_batch_size
+    def get_train_learning_rate(self): return self.__train_learning_rate
     def get_train_epochs(self): return self.__train_epochs
     def get_loss_lamda(self): return self.__loss_lamda
     def get_train_negative_iou(self): return self.__train_negative_iou

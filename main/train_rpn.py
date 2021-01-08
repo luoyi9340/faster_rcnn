@@ -18,6 +18,7 @@ log = logf.get_logger('train_rpn')
 #    rpn 模型
 log.info('init rpn_model...')
 rpn_model = rpn.RPNModel(cnns_name=conf.RPN.get_cnns(), 
+                         learning_rate=conf.RPN.get_train_learning_rate(),
                          scaling=conf.CNNS.get_feature_map_scaling(), 
                          train_cnns=True,
                          train_rpn=True,
