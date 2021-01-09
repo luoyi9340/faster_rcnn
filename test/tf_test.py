@@ -9,6 +9,7 @@ import tensorflow as tf
 import tensorflow.python.framework.ops as ops
 import numpy as np
 import math
+import sys
 
 import utils.math_expand as em
 import utils.alphabet as al
@@ -101,42 +102,42 @@ import utils.alphabet as al
 #    模拟计算loss，假设特征图是2*2的，batch_size=2
 #    全0的点既不是正样本也不是负样本
 #    正样本 > 0, 负样本 < 0
-fmaps_cls = tf.random.uniform(shape=(2, 2, 2, 2, 4), minval=-1, maxval=1, dtype=tf.float32)     
-fmaps_cls = tf.nn.softmax(fmaps_cls, axis=3)
-fmaps_reg = tf.random.uniform(shape=(2, 2, 2, 4, 4), minval=1, maxval=50, dtype=tf.float32)     
-fmaps = tf.concat([fmaps_cls, fmaps_reg], axis=3)
-[fmaps_cls, fmaps_reg] = tf.split(fmaps, [2, 4], axis=3)
-
-y_true = np.random.uniform(size=(2, 2,2, 6, 4), low=1, high=50)
-zero = np.zeros(shape=(6, 4))
-y_true[0, 0,1] = zero
-y_true[0, 1,1] = zero
-y_true[1, 0,0] = zero
-y_true[1, 1,0] = zero
-y_true[0, 0,0, 0] = np.array([1,0,0,1])
-y_true[0, 0,0, 1] = np.array([0,1,1,0])
-y_true[0, 1,0, 0] = np.array([0,1,1,0])
-y_true[0, 1,0, 1] = np.array([1,0,0,1])
-y_true[1, 0,1, 0] = np.array([0,1,0,1])
-y_true[1, 0,1, 1] = np.array([1,0,1,0])
-y_true[1, 1,1, 0] = np.array([0,0,1,0])
-y_true[1, 1,1, 1] = np.array([0,0,1,0])
-y_true[0, 0,0] = -y_true[0, 0,0]
-y_true[1, 1,1] = -y_true[1, 1,1]
-y_true = tf.convert_to_tensor(y_true, dtype=tf.float32)
-[y_true_cls, y_true_reg] = tf.split(y_true, [2, 4], axis=3)
-y_true_reg = tf.where(y_true_reg < 0, tf.zeros_like(y_true_reg), y_true_reg)
+# fmaps_cls = tf.random.uniform(shape=(2, 2, 2, 2, 4), minval=-1, maxval=1, dtype=tf.float32)     
+# fmaps_cls = tf.nn.softmax(fmaps_cls, axis=3)
+# fmaps_reg = tf.random.uniform(shape=(2, 2, 2, 4, 4), minval=1, maxval=50, dtype=tf.float32)     
+# fmaps = tf.concat([fmaps_cls, fmaps_reg], axis=3)
+# [fmaps_cls, fmaps_reg] = tf.split(fmaps, [2, 4], axis=3)
+# 
+# y_true = np.random.uniform(size=(2, 2,2, 6, 4), low=1, high=50)
+# zero = np.zeros(shape=(6, 4))
+# y_true[0, 0,1] = zero
+# y_true[0, 1,1] = zero
+# y_true[1, 0,0] = zero
+# y_true[1, 1,0] = zero
+# y_true[0, 0,0, 0] = np.array([1,0,0,1])
+# y_true[0, 0,0, 1] = np.array([0,1,1,0])
+# y_true[0, 1,0, 0] = np.array([0,1,1,0])
+# y_true[0, 1,0, 1] = np.array([1,0,0,1])
+# y_true[1, 0,1, 0] = np.array([0,1,0,1])
+# y_true[1, 0,1, 1] = np.array([1,0,1,0])
+# y_true[1, 1,1, 0] = np.array([0,0,1,0])
+# y_true[1, 1,1, 1] = np.array([0,0,1,0])
+# y_true[0, 0,0] = -y_true[0, 0,0]
+# y_true[1, 1,1] = -y_true[1, 1,1]
+# y_true = tf.convert_to_tensor(y_true, dtype=tf.float32)
+# [y_true_cls, y_true_reg] = tf.split(y_true, [2, 4], axis=3)
+# y_true_reg = tf.where(y_true_reg < 0, tf.zeros_like(y_true_reg), y_true_reg)
 
 #    从y_true不为0的点中取
 #    从>0的点中取正样本，<0的点中取负样本
-zeros_tmp_cls = tf.zeros_like(fmaps_cls)
-zeros_tmp_reg = tf.zeros_like(fmaps_reg)
-fmaps_cls_p = tf.where(y_true_cls > 0, fmaps_cls, zeros_tmp_cls)
-fmaps_cls_n = tf.where(y_true_cls < 0, fmaps_cls, zeros_tmp_cls)
-ymaps_cls_p = tf.where(y_true_cls > 0, y_true_cls, zeros_tmp_cls)
-ymaps_cls_n = tf.where(y_true_cls < 0, y_true_cls, zeros_tmp_cls)
-fmaps_reg_p = tf.where(y_true_reg > 0, fmaps_reg, zeros_tmp_reg)        #    回归只需要正样本
-ymaps_reg_p = tf.where(y_true_reg > 0, y_true_reg, zeros_tmp_reg)
+# zeros_tmp_cls = tf.zeros_like(fmaps_cls)
+# zeros_tmp_reg = tf.zeros_like(fmaps_reg)
+# fmaps_cls_p = tf.where(y_true_cls > 0, fmaps_cls, zeros_tmp_cls)
+# fmaps_cls_n = tf.where(y_true_cls < 0, fmaps_cls, zeros_tmp_cls)
+# ymaps_cls_p = tf.where(y_true_cls > 0, y_true_cls, zeros_tmp_cls)
+# ymaps_cls_n = tf.where(y_true_cls < 0, y_true_cls, zeros_tmp_cls)
+# fmaps_reg_p = tf.where(y_true_reg > 0, fmaps_reg, zeros_tmp_reg)        #    回归只需要正样本
+# ymaps_reg_p = tf.where(y_true_reg > 0, y_true_reg, zeros_tmp_reg)
 #    分类的正负样本
 # print(y_true_cls)
 # print(ymaps_cls_p)
@@ -145,8 +146,8 @@ ymaps_reg_p = tf.where(y_true_reg > 0, y_true_reg, zeros_tmp_reg)
 # print(fmaps_cls_n)
 #    回归的正样本
 # print(y_true_reg)
-print(ymaps_reg_p)
-print(fmaps_reg_p)
+# print(ymaps_reg_p)
+# print(fmaps_reg_p)
 
 
 #    模拟计算loss
@@ -196,9 +197,47 @@ print(fmaps_reg_p)
 # print(FN)
 
 #    计算回归metric（平均绝对误差）
-count = tf.math.count_nonzero(ymaps_cls_p, dtype=tf.float32)          #    正样本数量
-abs_ = tf.math.abs(ymaps_reg_p - fmaps_reg_p)
-print(tf.math.reduce_sum(abs_), count)
-print(tf.math.reduce_sum(abs_) / count)
+# count = tf.math.count_nonzero(ymaps_cls_p, dtype=tf.float32)          #    正样本数量
+# abs_ = tf.math.abs(ymaps_reg_p - fmaps_reg_p)
+# print(tf.math.reduce_sum(abs_), count)
+# print(tf.math.reduce_sum(abs_) / count)
+
+
+#    初始化控制台输出格式
+def console_handler(log_fmt="%(asctime)s-%(name)s-%(levelname)s-%(message)s", log_level=tf._logging.INFO):
+    console_handler = tf._logging.StreamHandler()
+    console_handler.setLevel(log_level)
+    
+    #    root log输出格式
+    console_fmt = tf._logging.Formatter(log_fmt)
+    console_handler.setFormatter(console_fmt)
+    return console_handler
+
+
+#    日志
+log = tf._logging.getLogger('aaaa')
+#    打印到文件
+log_level = tf._logging.INFO
+log.setLevel(log_level)
+log_path = '/Users/irenebritney/Desktop/workspace/eclipse-workspace2/faster_rcnn/logs/tf_test.log'
+    
+log_handler = tf._logging.FileHandler(log_path, encoding='utf-8')
+log_handler.setLevel(log_level)
+    
+log_fmt = '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+fmt = tf._logging.Formatter(log_fmt)
+log_handler.setFormatter(fmt)
+log.addHandler(log_handler)
+
+#    打印到控制台
+log.addHandler(console_handler(log_fmt=log_fmt, log_level=log_level))
+
+
+t = tf.convert_to_tensor(5, dtype=tf.float32)
+# sys.stderr = open(log_path, mode='a', encoding='utf-8')
+# log.info(t)
+
+tf.print(t, output_stream='file:///Users/irenebritney/Desktop/workspace/eclipse-workspace2/faster_rcnn/logs/tf_test.log')
+
 
 

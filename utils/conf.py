@@ -29,7 +29,8 @@ def load_conf_yaml():
     f = open(CONF_PATH, 'r', encoding='utf-8')
     fr = f.read()
     
-    c = yaml.load(fr)
+#     c = yaml.load(fr, Loader=yaml.SafeLoader)
+    c = yaml.safe_load(fr)
     
     #    读取letter相关配置项
     dataset = Dataset(c['dataset']['in_train'], c['dataset']['count_train'], c['dataset']['label_train'],
@@ -55,9 +56,7 @@ def load_conf_yaml():
     
     cnns = CNNs(c['cnns']['feature_map_scaling'])
     
-    logs = Logs(c['logs'])
-    
-    return c, dataset, rpn, cnns, logs
+    return c, dataset, rpn, cnns
 
 #    验证码识别数据集。为了与Java的风格保持一致
 class Dataset:
@@ -151,14 +150,6 @@ class CNNs():
     def get_feature_map_scaling(self): return self.__feature_map_scaling
     pass
 
-#    log相关配置（只有该配置信息是原始dict）
-class Logs:
-    def __init__(self, conf_dict):
-        self.__dict = conf_dict
-        pass
-    def get_logs_dict(self): return self.__dict
-    pass
-
 
 #    取配置的绝对目录
 def convert_to_abspath(path):
@@ -189,7 +180,7 @@ def mkdir_ifnot_exises(_dir):
         os.makedirs(_dir)
     pass
 
-ALL_DICT, DATASET, RPN, CNNS, LOGS = load_conf_yaml()
+ALL_DICT, DATASET, RPN, CNNS = load_conf_yaml()
 
 
 #    写入配置文件

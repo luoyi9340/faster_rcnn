@@ -9,8 +9,8 @@ import tensorflow as tf
 
 import utils.conf as conf
 import utils.math_expand as me
+import utils.logger_factory as logf
 import models.layers.rpn as rpn
-
 
 
 #    RPN网络的损失
@@ -66,7 +66,7 @@ class RPNLoss(tf.keras.losses.Loss):
         '''
         (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p) = rpn.takeout_sample(y_true, y_pred)
         loss = self.loss_cls(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n) \
-                        + self.__loss_lamda * self.loss_reg(ymaps_reg_p, fmaps_reg_p)
+                        + self.__loss_lamda * self.loss_reg(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
         return loss
     
     #    loss_cls
@@ -84,23 +84,27 @@ class RPNLoss(tf.keras.losses.Loss):
         loss_cls_p = -ymaps_cls_p * tf.math.log(fmaps_cls_p)
         loss_cls_p = tf.where(tf.math.is_nan(loss_cls_p), tf.zeros_like(loss_cls_p), loss_cls_p)        #    ymaps_cls_p中存在大量的0值，过log函数会变成nan
         # loss_cls_p = tf.reduce_mean(loss_cls_p, axis=(1,2,3,4))                                       #    大量的0值也会占用mean的计算名额，所以不能用reduce_mean
-        count_p = tf.cast(tf.math.count_nonzero(loss_cls_p, axis=(1,2,3,4)), dtype=tf.float32)          #    每个batch_size正样本总数
-        loss_cls_p = tf.math.reduce_sum(loss_cls_p, axis=(1,2,3,4)) / count_p
+        count_p = tf.cast(tf.math.count_nonzero(ymaps_cls_p, axis=(1,2,3,4)), dtype=tf.float32)          #    每个batch_size正样本总数
+        loss_cls_p_sum = tf.math.reduce_sum(loss_cls_p, axis=(1,2,3,4))
+        loss_cls_p = loss_cls_p_sum / count_p
         
         #    计算负样本loss
         loss_cls_n = ymaps_cls_n * tf.math.log(fmaps_cls_n)                                             #    负样本的值本身就是-1
         loss_cls_n = tf.where(tf.math.is_nan(loss_cls_n), tf.zeros_like(loss_cls_n), loss_cls_n)        #    跟ymaps_cls_p的道理一样
         # loss_cls_n = tf.reduce_mean(loss_cls_n, axis=(1,2,3,4))                                       #    跟ymaps_cls_p的道理一样
-        count_n = tf.cast(tf.math.count_nonzero(loss_cls_n, axis=(1,2,3,4)), dtype=tf.float32)
-        loss_cls_n = tf.math.reduce_sum(loss_cls_n, axis=(1,2,3,4)) / count_n
+        count_n = tf.cast(tf.math.count_nonzero(ymaps_cls_n, axis=(1,2,3,4)), dtype=tf.float32)
+        loss_cls_n_sum = tf.math.reduce_sum(loss_cls_n, axis=(1,2,3,4))
+        loss_cls_n = loss_cls_n_sum / count_n
         
         loss_cls = loss_cls_p + loss_cls_n
-#         tf.print('loss_cls:', loss_cls)
+        
+        tf.print('loss_cls_p:', loss_cls_p, ' loss_cls_p_sum:', loss_cls_p_sum, ' count_p:', count_p, output_stream=logf.get_logger_filepath('rpn_loss'))
+        tf.print('loss_cls_n:', loss_cls_n, ' loss_cls_n_sum:', loss_cls_n_sum, ' count_n:', count_n, output_stream=logf.get_logger_filepath('rpn_loss'))
         return loss_cls
 
 
     #    loss_reg
-    def loss_reg(self, ymaps_reg_p, fmaps_reg_p):
+    def loss_reg(self, ymaps_reg_p, fmaps_reg_p, ymaps_cls_p):
         '''smoothL1 损失
             @param ymaps_reg_p: 正样本标签(batch_size, h, w, 4, K)
             @param fmaps_reg_p: 正样本预测
@@ -139,9 +143,10 @@ class RPNLoss(tf.keras.losses.Loss):
         '''
         #    计算正样本loss
         loss_reg_p = me.smootL1_tf(ymaps_reg_p - fmaps_reg_p)
-        count_p = tf.cast(tf.math.count_nonzero(loss_reg_p, axis=(1,2,3,4)), dtype=tf.float32)
-        loss_reg_p = tf.math.reduce_sum(loss_reg_p, axis=(1,2,3,4)) / count_p
+        count_p = tf.cast(tf.math.count_nonzero(ymaps_cls_p, axis=(1,2,3,4)), dtype=tf.float32)
+        loss_reg_p_sum = tf.math.reduce_sum(loss_reg_p, axis=(1,2,3,4))
+        loss_reg_p = loss_reg_p_sum / count_p
         
-#         tf.print('loss_reg:', loss_reg_p)
+        tf.print('loss_reg:', loss_reg_p, ' loss_reg_p_sum:', loss_reg_p_sum, ' count_p:', count_p, output_stream=logf.get_logger_filepath('rpn_loss'))
         return loss_reg_p
     pass

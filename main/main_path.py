@@ -11,3 +11,6 @@ import os
 ROOT_PATH = os.path.abspath(os.path.dirname(__file__)).split('faster_rcnn')[0]
 ROOT_PATH = ROOT_PATH + "faster_rcnn"
 sys.path.append(ROOT_PATH)
+
+
+

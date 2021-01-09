@@ -2,15 +2,15 @@
 dataset:
    #   训练集相关配置
    in_train: /Users/irenebritney/Desktop/vcode/dataset/num_letter/train
-   count_train: 10
+   count_train: 100
    label_train: /Users/irenebritney/Desktop/vcode/dataset/num_letter/train.txt
    #   验证集相关配置
    in_val: /Users/irenebritney/Desktop/vcode/dataset/num_letter/val
-   count_val: 10
+   count_val: 100
    label_val: /Users/irenebritney/Desktop/vcode/dataset/num_letter/val.txt
    #   测试集相关配置
    in_test: /Users/irenebritney/Desktop/vcode/dataset/num_letter/test
-   count_test: 10
+   count_test: 100
    label_test: /Users/irenebritney/Desktop/vcode/dataset/num_letter/test.txt
    
 
@@ -24,7 +24,7 @@ rpn:
    #   判定为正样本的iou比率（与某个label的IOU大于该值）
    train_positives_iou: 0.7
    #   判定为负样本的iou比率（与所有label的IOU都小于该值）
-   train_negative_iou: 0.3
+   train_negative_iou: 0.05
    #   每张图片多少个正样本（超过的IoU降序取前多少个，不够的补IoU=-1的数据）
    train_positives_every_image: 64
    #   每张图片多少个负样本（不够的补IoU=-1的数据）
@@ -32,11 +32,11 @@ rpn:
    #   训练时每次取多少张图片
    train_batch_size: 2
    #   训练时的学习率
-   train_learning_rate: 0.001
+   train_learning_rate: 0.01
    #   训练多少个epochs
    train_epochs: 5
    #   Loss_cls + λ*Loss_reg中间的λ
-   loss_lamda: 10
+   loss_lamda: 0.1
    #   模型保存（中间占位符表示用的什么cnns）
    save_weights_dir: temp/models
    #   tensorboard目录
@@ -73,25 +73,4 @@ cnns:
    
    
    
-#   日志相关配置
-logs:
-   #   数据集相关日志
-   data_rois_creator: 
-      #   日志输出级别
-      level: "INFO"
-      #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
-      out: "logs/data_rois_creator.log"
-      #   该log是否打印到控制台
-      console: true
-      #   log输出格式
-      formatter: "%(asctime)s-%(name)s-%(levelname)s-%(message)s"
-   #   数据集相关日志
-   train_rpn: 
-      #   日志输出级别
-      level: "INFO"
-      #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
-      out: "logs/train_rpn.log"
-      #   该log是否打印到控制台
-      console: true
-      #   log输出格式
-      formatter: "%(asctime)s-%(name)s-%(levelname)s-%(message)s"
+

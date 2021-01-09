@@ -7,6 +7,7 @@ Created on 2020年12月15日
 @author: irenebritney
 '''
 import logging
+import yaml
 
 import utils.conf as conf
 
@@ -17,8 +18,18 @@ LOGS_CACHE = {}
 #    取logger对象（与conf.yml中logs配置项对应）
 def get_logger(log_name):
     log = LOGS_CACHE.get(log_name)
-    if (log is None): log = init_logger_by_name(log_name)
+    if (log is None): 
+        log = init_logger_by_name(log_name)
+        LOGS_CACHE[log_name] = log
     return log
+#    取tf.print需要的重定向文件目录
+def get_logger_filepath(log_name):
+    log = LOGS_CACHE.get(log_name)
+    if (log is None): 
+        log = init_logger_by_name(log_name)
+        LOGS_CACHE[log_name] = log
+    return "file://" + log.log_file_path
+#    取rootlog（但不建议这样用）
 def get_root():
     return get_logger('root')
 
@@ -34,6 +45,8 @@ def log_level_enums(level="INFO"):
     elif (level == "ERROR"): return logging.ERROR
     elif (level == "FAIL" | level == "CRITICAL"): return logging.FATAL
     else: return logging.INFO
+    
+    
 #    初始化控制台输出格式
 def console_handler(log_fmt="%(asctime)s-%(name)s-%(levelname)s-%(message)s", log_level=logging.INFO):
     console_handler = logging.StreamHandler()
@@ -55,6 +68,7 @@ def init_root_logger():
     conf.mkfiledir_ifnot_exises(root_log_path)
     root_log_handler = logging.FileHandler(root_log_path, encoding='utf-8')
     root_log_handler.setLevel(logging.INFO)
+    root_log.log_file_path = root_log_path
     
     #    root log输出格式
     root_log_fmt = logging.Formatter("%(asctime)s-%(name)s-%(levelname)s-%(message)s")
@@ -69,8 +83,7 @@ ROOT_LOG = init_root_logger()
 
 #    初始化log
 def init_logger_by_name(log_name):
-    log_conf = conf.LOGS.get_logs_dict()
-    log_name_conf = log_conf.get(log_name)
+    log_name_conf = LOGS_CONF.get(log_name)
     #    如果还没有配置值直接用root
     if (log_name_conf is None): 
         LOGS_CACHE[log_name] = ROOT_LOG
@@ -86,7 +99,7 @@ def init_logger_by_name(log_name):
     if (log_path is None): log_path = "logs/" + log_name + ".log"
     if (not log_path.startswith("/")): log_path = conf.ROOT_PATH + "/" + log_path
     conf.mkfiledir_ifnot_exises(log_path)
-    
+    log.log_file_path = log_path
     
     log_handler = logging.FileHandler(log_path, encoding='utf-8')
     log_handler.setLevel(log_level)
@@ -97,13 +110,26 @@ def init_logger_by_name(log_name):
         log_handler.setFormatter(fmt)
         pass
     
-    
     log.addHandler(log_handler)
     
     is_console = log_name_conf.get('console')
     if (is_console): log.addHandler(console_handler(log_fmt=log_fmt, log_level=log_level))
     
-    LOGS_CACHE[log_name] = log
     return log
+
+
+
+#    取配置文件目录
+CONF_PATH = conf.ROOT_PATH + "/resources/logs.yml"
+#    加载logs.yml配置文件
+def load_logs_yaml(yml_fpath=CONF_PATH):
+    print('加载日志配置文件:' + CONF_PATH)
+    
+    f = open(yml_fpath, 'r', encoding='utf-8')
+    fr = f.read()
+    
+    logs = yaml.safe_load(fr)
+    return logs
+LOGS_CONF = load_logs_yaml()
 
 

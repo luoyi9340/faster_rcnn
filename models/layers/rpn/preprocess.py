@@ -40,8 +40,8 @@ def preprocess_like_fmaps(y_true,
     y_true_positives = y_true[:count_positives, :]
     y_true_negative = y_true[count_positives:, :]
     #    过滤掉IoU<0的
-    y_true_positives = y_true_positives[y_true_positives[:,0] > 0]
-    y_true_negative = y_true_negative[y_true_negative[:,0] > 0]
+    y_true_positives = y_true_positives[y_true_positives[:,0] >= 0]
+    y_true_negative = y_true_negative[y_true_negative[:,0] >= 0]            #    还真能碰到IoU=0的数据
     
     #    写入正负样本的前背景概率
     #    正样本的(h, w, 0, k)置为1

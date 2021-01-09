@@ -316,24 +316,24 @@ def read_rois_generator(rois_out=conf.RPN.get_train_rois_out(),
         #    读取训练数据信息
         #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
         positives = d['positives']
+        if (len(positives) > count_positives): positives = positives[0: count_positives]
         #    整个拉直成(*, 14)维数组
         positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
         #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
         if (len(positives) < count_positives): positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
-        elif (len(positives) > count_positives): positives = positives[0: count_positives]
         positives = np.array(positives)
         
         #    取负样本，并给每个样本补默认lable，如果不足count_negative，用IoU=-1，其他全0补全
         negative = d['negative']
+        if (len(negative) > count_negative): negative = negative[0: count_negative]
         #    整个拉直成(*, 9)维数组
         negative = [[a[0]] + a[1] for a in negative]
         #    补label标签
         negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
         #    如果不足count_negative，用IoU=-1，其他全0补全
         if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
-        elif (len(negative) > count_negative): negative = negative[0: count_negative]
+
         y = np.vstack((positives, negative))
-        
         #    y数据过前置处理
         if (y_preprocess is not None): y = y_preprocess(y)
         yield x, y

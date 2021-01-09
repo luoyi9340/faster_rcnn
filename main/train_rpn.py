@@ -12,8 +12,7 @@ import models.layers.rpn.preprocess as preprocess
 import data.dataset_rois as rois
 
 
-log = logf.get_logger('train_rpn')
-
+log = logf.get_logger('rpn_train')
 
 #    rpn 模型
 log.info('init rpn_model...')

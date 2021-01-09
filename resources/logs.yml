@@ -1,0 +1,45 @@
+#   日志相关配置
+#   数据集相关日志
+data_rois_creator:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/data/roi_creator.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+   
+   
+#   数据集相关日志
+rpn_train:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/rpn/train.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+   
+#   rpn损失相关日志
+rpn_loss:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/rpn/losses.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+   
+#   rpn评价相关日志
+rpn_metric:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/rpn/metrics.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'

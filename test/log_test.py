@@ -8,7 +8,8 @@ Created on 2021年1月5日
 import utils.logger_factory as logf
 
 
-log = logf.get_root()
+
+log = logf.get_logger('rpn_loss')
 log.info('test logger. str:%s num:%d', 'aaa', 18)
-log.warn('test warn msg1:{} msg2:{}'.format('aaa', 18))
+log.warning('test warn msg1:{} msg2:{}'.format('aaa', 18))
 

@@ -8,6 +8,7 @@ Created on 2021年1月5日
 import tensorflow as tf
 
 import models.layers.rpn as rpn
+import utils.logger_factory as logf
 
 
 #    分类评价函数
@@ -42,9 +43,9 @@ class RPNMetricCls(tf.keras.metrics.Metric):
         ones_like_cls_p, zeros_like_cls_p = tf.ones_like(prob_cls_p), tf.zeros_like(prob_cls_p)
         ones_like_cls_n, zeros_like_cls_n = tf.ones_like(prob_cls_n), tf.zeros_like(prob_cls_n)
         TP = tf.math.count_nonzero(tf.where(prob_cls_p > 0.5, ones_like_cls_p, zeros_like_cls_p), dtype=tf.float32)       #    TP = 正样本的前景概率 > 0.5
-        FP = tf.math.count_nonzero(tf.where(prob_cls_n < 0.5, ones_like_cls_n, zeros_like_cls_n), dtype=tf.float32)       #    FP = 负样本的前景概率 > 0.5
+        FP = tf.math.count_nonzero(tf.where(prob_cls_n <= 0.5, ones_like_cls_n, zeros_like_cls_n), dtype=tf.float32)       #    FP = 负样本的前景概率 > 0.5
         TN = tf.math.count_nonzero(tf.where(prob_cls_n > 0.5, ones_like_cls_n, zeros_like_cls_n), dtype=tf.float32)       #    TN = 负样本的背景概率 > 0.5
-        FN = tf.math.count_nonzero(tf.where(prob_cls_p < 0.5, ones_like_cls_p, zeros_like_cls_p), dtype=tf.float32)       #    FN = 正样本的背景概率 > 0.5
+        FN = tf.math.count_nonzero(tf.where(prob_cls_p <= 0.5, ones_like_cls_p, zeros_like_cls_p), dtype=tf.float32)       #    FN = 正样本的背景概率 > 0.5
         
         return (TP, TN, FP, FN, P, N)
     def update_state(self, y_true, y_pred, sample_weight=None):
@@ -71,11 +72,13 @@ class RPNMetricCls(tf.keras.metrics.Metric):
                                 (batch_size, h, w, 2, K)代表每个点的x缩放，K的顺序为area * scales
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
-        print(y_true, y_pred)
         (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = rpn.takeout_sample(y_true, y_pred)
-        (tp, tn, fp, fn, _, _) = self.tp_tn_fp_tf_p_n(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n)
+        (tp, tn, fp, fn, p, n) = self.tp_tn_fp_tf_p_n(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n)
         
-        acc = (tp + tn) / (tp + tn + fp + fn)
+        total = tf.math.add(p, n)
+        t = tf.math.add(tp, tn)
+        acc = tf.math.divide(t, total)
+        tf.print('acc:', acc, ' t(tp+tn):', t, ' total(p+n):', total, ' tp:', tp, ' tn:', tn, ' fp:', fp, ' fn:', fn, ' p:', p, ' n:', n, output_stream=logf.get_logger_filepath('rpn_metric'))
         self.acc.assign(acc)
         pass
     def result(self):
@@ -134,10 +137,10 @@ class RPNMetricReg(tf.keras.metrics.Metric):
                                 (batch_size, h, w, 2, K)代表每个点的x缩放，K的顺序为area * scales
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
-        print(y_true, y_pred)
         (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = rpn.takeout_sample(y_true, y_pred)
         
         mae = self.mean_abs_error(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
+        tf.print('mae:', mae, output_stream=logf.get_logger_filepath('rpn_metric'))
         self.mae.assign(mae)
         pass
     

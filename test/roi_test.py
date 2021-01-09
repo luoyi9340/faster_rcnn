@@ -16,9 +16,11 @@ from utils.conf import DATASET
 
 #    单独展示anchor结果
 def show_anchors(fa, 
-                 is_show_anchors=True,
+                 is_show_positive=True,
+                 is_show_negative=True,
+                 count_negative=100,
                  is_show_labels=True,
-                 is_show_positives=True):
+                 is_show_anchors=True):
     file = DATASET.get_in_train() + "/" + fa['file_name'] + ".png"
     img = Image.open(file)
     img = img.resize((480, 180), Image.ANTIALIAS)
@@ -27,9 +29,20 @@ def show_anchors(fa,
     ax = fig.add_subplot(1,1,1)
      
     #    打印找到的anchors
-    if (is_show_positives):
+    if (is_show_positive):
         print(len(fa['positives']))
         for (iou, anchor, label) in fa['positives']:
+            rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'red',linewidth=1)
+            ax.add_patch(rect)
+            pass
+        pass
+    #    打印找到的anchors
+    if (is_show_negative):
+        print(len(fa['negative']))
+        i = 0
+        for (iou, anchor) in fa['negative']:
+            if (i > count_negative): break;
+            i += 1
             rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'red',linewidth=1)
             ax.add_patch(rect)
             pass
@@ -82,7 +95,13 @@ rois_creator = rois.RoisCreator()
 # rois_creator.create()
 file_anchors = rois_creator.test_create(label_file_path=DATASET.get_label_train(), 
 #                                         file_name='159af410-cc08-41a8-8156-c563d831a0d0', 
-                                        count=100, train_positives_iou=0.7)
-show_msg(file_anchors)
-
+                                        count=100, 
+                                        train_positives_iou=0.7,
+                                        train_negative_iou=0.05)
+fa = file_anchors[0]
+show_anchors(fa, 
+             is_show_positive=False, 
+             is_show_negative=True, 
+             is_show_labels=False, 
+             is_show_anchors=False)
 
