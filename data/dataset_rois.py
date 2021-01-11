@@ -12,6 +12,7 @@ import math
 import tensorflow as tf
 import numpy as np
 import PIL
+import concurrent.futures.thread as thread
 
 import data.dataset as ds
 import utils.conf as conf
@@ -44,36 +45,104 @@ class RoisCreator():
                                                                 feature_map_scaling=self.__cnns_feature_map_scaling, 
                                                                 roi_areas=self.__roi_areas, roi_scales=self.__roi_scales)
         pass
-    #    生成rois
-    def create(self, 
-               label_file_path=conf.DATASET.get_label_train(),
-               rois_out=conf.RPN.get_train_rois_out(),
-               count=conf.DATASET.get_count_train(),
-               log_interval=100):
+    
+    #    从单文件中读取标签并操作
+    def __create_from_file(self, label_file_path, count, rois_out, log_interval=100, thread_name='thread0'):
+        '''从单文件中读取标签并操作
+            @param fpath: 标签文件路径
+            @param count: 每个文件读取记录数
+            @param rois_out: rois.json文件路径
+            @param log_interval: 每多少条记录打印一次日志
+        '''
         fw = file_writer(rois_out=rois_out)
-        
         #    迭代标签文件
         label_iterator = ds.label_file_iterator(label_file_path=label_file_path, count=count)
         #    统计信息
-        num_anchors, num_positives, num_negative = 0, 0, 0
+        num_labels, num_positives, num_negative = 0, 0, 0
         num = 0
         for file_name, vcode, labels in label_iterator:
             anchors = self.__create_anchors(file_name, vcode, labels, self.__train_positives_iou, self.__train_negative_iou)
             
             j = json.dumps(anchors)
             fw.write(j + "\n")
-            num_anchors += 1
+            num_labels += 1
             num_positives += len(anchors['positives'])
             num_negative += len(anchors['negative'])
             
             num += 1
             if (num % log_interval == 0):
-                log.info('create rois. num:%d total:%d avg_p:%f avg_n:%f', num, count, num_positives/num_anchors, num_negative/num_anchors)
+                log.info('create rois ' + thread_name + '. num:%d total:%d avg_p:%f avg_n:%f', num, count, num_positives/num_labels, num_negative/num_labels)
                 pass
             pass
         
         fw.close()
-        return (num_anchors, num_positives, num_negative)
+        return (num_labels, num_positives, num_negative)
+    
+    #    生成rois
+    def create(self, 
+               label_file_path=conf.DATASET.get_label_train(),
+               rois_out=conf.ROIS.get_train_rois_out(),
+               count=conf.DATASET.get_count_train(),
+               log_interval=100,
+               label_mutiple=False,
+               max_workers=-1):
+        '''生成rois
+            @param label_file_path: 标签文件完整路径
+            @param rois_out: rois.jsons输出目录
+            @param count: 读取记录条数（多文件为每个文件读取记录条数）
+            @param log_interval: 每多少条记录打一次log
+            @param label_mutiple: label是否为多文件（多文件则文件名从*.jsons0开始一直往后，直到读不到为止）
+        '''
+        label_files = []
+        #    如果是单文件则写入单文件
+        if (not label_mutiple):
+            label_files.append(label_file_path)
+            return self.__create_from_file(label_file_path, count, rois_out, log_interval)
+        #    多文件时先找到所有的文件名
+        else:
+            idx = 0
+            while (os.path.exists(label_file_path + str(idx))):
+                fpath = label_file_path + str(idx)
+                label_files.append(fpath)
+                idx += 1
+                pass
+            pass
+        
+        #    遍历文件，用单文件或线程池的方式跑
+        num_labels, num_positives, num_negative = 0, 0, 0
+        #    单线程模式
+        if (max_workers <= 0):
+            for fpath in label_files:
+                (num_a, num_p, num_n) = self.__create_from_file(fpath, count, rois_out, log_interval)
+                num_labels += num_a
+                num_positives += num_p
+                num_negative += num_n
+            pass
+        #    多线程模式
+        else:
+            threadPool = thread.ThreadPoolExecutor(max_workers=max_workers)
+            futures = []
+            idx = 0
+            for fpath in label_files:
+                label_fpath = label_file_path + str(idx)
+                thread_name = 'thread' + str(idx)
+                thread_rois_out = rois_out + str(idx)
+                future = threadPool.submit(self.__create_from_file, label_fpath, count, thread_rois_out, log_interval, thread_name)
+                futures.append(future)
+                idx += 1
+                pass
+            #    拿每个线程执行结果
+            for future in futures:
+                (num_a, num_p, num_n) = future.result()
+                num_labels += num_a
+                num_positives += num_p
+                num_negative += num_n
+                pass
+            threadPool.shutdown(5)
+            pass
+        return (num_labels, num_positives, num_negative)
+        
+        
     #    测试方法
     def test_create(self,
                     file_name=None,
@@ -257,7 +326,7 @@ class RoisCreator():
 
 #    读上面creator生成的数据，组成tensor数据源
 #    建上级目录，清空同名文件
-def mkdirs_rois_out_and_remove_file(rois_out=conf.RPN.get_train_rois_out()):
+def mkdirs_rois_out_and_remove_file(rois_out=conf.ROIS.get_train_rois_out()):
     #    判断创建上级目录
     _dir = os.path.dirname(rois_out)
     if (not os.path.exists(_dir)):
@@ -272,7 +341,7 @@ def mkdirs_rois_out_and_remove_file(rois_out=conf.RPN.get_train_rois_out()):
 
 
 #    打开文件（该方法会清空之前的文件）
-def file_writer(rois_out=conf.RPN.get_train_rois_out()):
+def file_writer(rois_out=conf.ROIS.get_train_rois_out()):
     mkdirs_rois_out_and_remove_file(rois_out=rois_out)
     
     fw = open(rois_out, mode='w', encoding='utf-8')
@@ -280,7 +349,8 @@ def file_writer(rois_out=conf.RPN.get_train_rois_out()):
 
 
 #    rpn网络单独训练数据集生成器
-def read_rois_generator(rois_out=conf.RPN.get_train_rois_out(), 
+def read_rois_generator(rois_out=conf.ROIS.get_train_rois_out(), 
+                        is_rois_mutiple_file=False,
                         image_dir=conf.DATASET.get_in_train(), 
                         count_positives=conf.RPN.get_train_positives_every_image(),
                         count_negative=conf.RPN.get_train_negative_every_image(),
@@ -296,63 +366,95 @@ def read_rois_generator(rois_out=conf.RPN.get_train_rois_out(),
                 ...前count_positives个为正样本...
                 ...后count_negative个为负样本...
             ]
-        @param rois_out: rois.json文件完整路径
+        @param rois_out: rois.jsons文件完整路径
+        @param is_rois_mutiple_file: rois_jsons是否多文件（多文件会从rois.jsons0开始rois.jsons1，rois.jsons2一直往上遍历，直到遍历不到为止）
         @param image_dir: 图片文件目录
         @param x_preprocess: x数据预处理（默认归到-1 ~ 1之间）
         @param y_preprocess: y数据预处理
     '''
-    for line in open(rois_out, mode='r', encoding='utf-8'):
-        d = json.loads(line)
-        
-        #    读取图片信息，并且归一化
-        file_name = d['file_name']
-        image = PIL.Image.open(image_dir + "/" + file_name + '.png', mode='r')
-        image = image.resize((conf.IMAGE_WEIGHT, conf.IMAGE_HEIGHT),PIL.Image.ANTIALIAS)
-        x = np.asarray(image, dtype=np.float32)
-        #    x数据做前置处理（归一化在这里做）
-        if (x_preprocess is not None):x = x_preprocess(x)
-        
-        
-        #    读取训练数据信息
-        #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
-        positives = d['positives']
-        if (len(positives) > count_positives): positives = positives[0: count_positives]
-        #    整个拉直成(*, 14)维数组
-        positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
-        #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
-        if (len(positives) < count_positives): positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
-        positives = np.array(positives)
-        
-        #    取负样本，并给每个样本补默认lable，如果不足count_negative，用IoU=-1，其他全0补全
-        negative = d['negative']
-        if (len(negative) > count_negative): negative = negative[0: count_negative]
-        #    整个拉直成(*, 9)维数组
-        negative = [[a[0]] + a[1] for a in negative]
-        #    补label标签
-        negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
-        #    如果不足count_negative，用IoU=-1，其他全0补全
-        if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
-
-        y = np.vstack((positives, negative))
-        #    y数据过前置处理
-        if (y_preprocess is not None): y = y_preprocess(y)
-        yield x, y
+    label_files = []
+    #    单文件模式rois_out就是rois标签文件
+    if (not is_rois_mutiple_file):
+        label_files.append(rois_out)
+        pass
+    #    多文件模式从rois.jsons0开始rois.jsons1，rois.jsons2一直往上遍历，直到遍历不到为止
+    else:
+        idx = 0
+        while (os.path.exists(rois_out + str(idx))):
+            filepath = rois_out + str(idx)
+            label_files.append(filepath)
+            idx += 1
+            pass
+        pass
+    
+    #    遍历所有文件和所有行
+    for fpath in label_files:
+        for line in open(fpath, mode='r', encoding='utf-8'):
+            d = json.loads(line)
+            
+            #    读取图片信息，并且归一化
+            file_name = d['file_name']
+            image = PIL.Image.open(image_dir + "/" + file_name + '.png', mode='r')
+            image = image.resize((conf.IMAGE_WEIGHT, conf.IMAGE_HEIGHT),PIL.Image.ANTIALIAS)
+            x = np.asarray(image, dtype=np.float32)
+            #    x数据做前置处理（归一化在这里做）
+            if (x_preprocess is not None):x = x_preprocess(x)
+            
+            
+            #    读取训练数据信息
+            #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
+            positives = d['positives']
+            if (len(positives) > count_positives): positives = positives[0: count_positives]
+            #    整个拉直成(*, 14)维数组
+            positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
+            #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
+            if (len(positives) < count_positives): positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
+            positives = np.array(positives)
+            
+            #    取负样本，并给每个样本补默认lable，如果不足count_negative，用IoU=-1，其他全0补全
+            negative = d['negative']
+            if (len(negative) > count_negative): negative = negative[0: count_negative]
+            #    整个拉直成(*, 9)维数组
+            negative = [[a[0]] + a[1] for a in negative]
+            #    补label标签
+            negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
+            #    如果不足count_negative，用IoU=-1，其他全0补全
+            if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
+    
+            y = np.vstack((positives, negative))
+            #    y数据过前置处理
+            if (y_preprocess is not None): y = y_preprocess(y)
+            yield x, y
+        pass
     pass
 
 
 #    rpn网络单独训练数据集
 def rpn_train_db(image_dir=conf.DATASET.get_in_train(), 
-                        rois_out=conf.RPN.get_train_rois_out(), 
+                        rois_out=conf.ROIS.get_train_rois_out(), 
+                        is_rois_mutiple_file=False,
                         count_positives=conf.RPN.get_train_positives_every_image(),
                         count_negative=conf.RPN.get_train_negative_every_image(),
                         batch_size=conf.RPN.get_train_batch_size(), 
                         ymaps_shape=(12, 30, 6, 15),
                         x_preprocess=None, 
                         y_preprocess=None):
+    '''rpn网络单独训练数据集
+        @param image_dir: 图片文件目录
+        @param rois_out: rois.jsons文件路径
+        @param is_rois_mutiple_file: rois.jsons是否为多文件（多文件会从rois.jsons0开始直到遍历不到文件）
+        @param count_positives: 每张图片多少个正样本
+        @param count_negative: 每张图片多少个负样本
+        @param batch_size: 数据集的batch_size
+        @param ymaps_shape: 特征图尺寸（参照one_hot做法会把label数据提前做成特征图的尺寸给到模型）
+        @param x_preprocess: 训练数据预处理
+        @param y_preprocess: 标签数据预处理（做成特征图尺寸就是在这里做的. 参考:rpn.preprocess.preprocess_like_fmaps）
+    '''
     #    训练数据shape和标签数据shape
     x_shape = tf.TensorShape([conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3])
     y_shape = tf.TensorShape(ymaps_shape)
     db = tf.data.Dataset.from_generator(lambda:read_rois_generator(rois_out=rois_out, 
+                                                                   is_rois_mutiple_file=is_rois_mutiple_file,
                                                                    image_dir=image_dir, 
                                                                    count_positives=count_positives,
                                                                    count_negative=count_negative,

@@ -33,14 +33,18 @@ def load_conf_yaml():
     c = yaml.safe_load(fr)
     
     #    读取letter相关配置项
-    dataset = Dataset(c['dataset']['in_train'], c['dataset']['count_train'], c['dataset']['label_train'],
-                    c['dataset']['in_val'], c['dataset']['count_val'], c['dataset']['label_val'],
-                    c['dataset']['in_test'], c['dataset']['count_test'], c['dataset']['label_test'])
+    dataset = Dataset(c['dataset']['in_train'], c['dataset']['count_train'], c['dataset']['label_train'], c['dataset']['label_train_mutiple'],
+                    c['dataset']['in_val'], c['dataset']['count_val'], c['dataset']['label_val'], c['dataset']['label_val_mutiple'],
+                    c['dataset']['in_test'], c['dataset']['count_test'], c['dataset']['label_test'], c['dataset']['label_test_mutiple'])
     
-    rpn = Rpn(c['rpn']['train_rois_out'],
-              c['rpn']['val_rois_out'],
-              c['rpn']['test_rois_out'],
-              c['rpn']['train_positives_iou'],
+    rois = Rois(c['rois']['train_rois_out'],
+                c['rois']['train_max_workers'],
+                c['rois']['val_rois_out'],
+                c['rois']['val_max_workers'],
+                c['rois']['test_rois_out'],
+                c['rois']['test_max_workers'])
+    
+    rpn = Rpn(c['rpn']['train_positives_iou'],
               c['rpn']['train_negative_iou'],
               c['rpn']['train_positives_every_image'],
               c['rpn']['train_negative_every_image'],
@@ -58,42 +62,48 @@ def load_conf_yaml():
     
     cnns = CNNs(c['cnns']['feature_map_scaling'])
     
-    return c, dataset, rpn, cnns
+    return c, dataset, rois, rpn, cnns
 
 #    验证码识别数据集。为了与Java的风格保持一致
 class Dataset:
-    def __init__(self, in_train="", count_train=50000, label_train="", in_val="", count_val=10000, label_val="", in_test="", count_test=10000, label_test=""):
+    def __init__(self, 
+                 in_train="", count_train=50000, label_train="", label_train_mutiple=False,
+                 in_val="", count_val=10000, label_val="", label_val_mutiple=False,
+                 in_test="", count_test=10000, label_test="", label_test_mutiple=False):
         self.__in_train = convert_to_abspath(in_train)
         self.__count_train = count_train
         self.__label_train = convert_to_abspath(label_train)
+        self.__label_train_mutiple = label_train_mutiple
         
         self.__in_val = convert_to_abspath(in_val)
         self.__count_val = count_val
         self.__label_val = convert_to_abspath(label_val)
+        self.__label_val_mutiple = label_val_mutiple
         
         self.__in_test = convert_to_abspath(in_test)
         self.__count_test = count_test
         self.__label_test = convert_to_abspath(label_test)
+        self.__label_test_mutiple = label_test_mutiple
         pass
     def get_in_train(self): return convert_to_abspath(self.__in_train)
     def get_count_train(self): return self.__count_train
     def get_label_train(self): return convert_to_abspath(self.__label_train)
+    def get_label_train_mutiple(self): return self.__label_train_mutiple
     
     def get_in_val(self): return convert_to_abspath(self.__in_val)
     def get_count_val(self): return self.__count_val
-    def get_label_val(self): return convert_to_abspath(self.__label_val)    
+    def get_label_val(self): return convert_to_abspath(self.__label_val)
+    def get_label_val_mutiple(self): return self.__label_val_mutiple   
     
     def get_in_test(self): return convert_to_abspath(self.__in_test)
     def get_count_test(self): return self.__count_test
     def get_label_test(self): return convert_to_abspath(self.__label_test)
+    def get_label_test_mutiple(self): return self.__label_test_mutiple
     pass
 
 #    RPN相关配置
 class Rpn():
     def __init__(self, 
-                 train_rois_out="temp/rois_train.jsons",
-                 val_rois_out="temp/rois_val.jsons",
-                 test_rois_out="temp/rois_test.jsons",
                  train_positives_iou=0.7,
                  train_negative_iou=0.3,
                  train_positives_every_image=256,
@@ -109,9 +119,6 @@ class Rpn():
                  cnns='reset_34',
                  nms_threshold_positives=0.5,
                  nms_threshold_iou=0.7):
-        self.__train_rois_out = train_rois_out
-        self.__val_rois_out = val_rois_out
-        self.__test_rois_out = test_rois_out
         self.__train_positives_iou = train_positives_iou
         self.__train_negative_iou = train_negative_iou
         self.__train_positives_every_image = train_positives_every_image
@@ -129,9 +136,6 @@ class Rpn():
         self.__nms_threshold_positives = nms_threshold_positives
         self.__nms_threshold_iou = nms_threshold_iou
         pass
-    def get_train_rois_out(self): return convert_to_abspath(self.__train_rois_out)
-    def get_val_rois_out(self): return convert_to_abspath(self.__val_rois_out)
-    def get_test_rois_out(self): return convert_to_abspath(self.__test_rois_out)
     def get_train_positives_iou(self): return self.__train_positives_iou
     def get_train_positives_every_image(self): return self.__train_positives_every_image
     def get_train_negative_every_image(self): return self.__train_negative_every_image
@@ -148,6 +152,30 @@ class Rpn():
     def get_cnns(self): return self.__cnns
     def get_nms_threshold_positives(self): return self.__nms_threshold_positives
     def get_nms_threshold_iou(self): return self.__nms_threshold_iou
+    pass
+
+#    ROIS相关配置
+class Rois():
+    def __init__(self, 
+                 train_rois_out='temp/rois/rois_train.jsons',
+                 train_max_workers=-1,
+                 val_rois_out='temp/rois/rois_val.jsons',
+                 val_max_workers=-1,
+                 test_rois_out='temp/rois/rois_test.jsons',
+                 test_max_workers=-1):
+        self.__train_rois_out = train_rois_out
+        self.__train_max_workers = train_max_workers
+        self.__val_rois_out = val_rois_out
+        self.__val_max_workers = val_max_workers
+        self.__test_rois_out = test_rois_out
+        self.__test_max_workers = test_max_workers
+        pass
+    def get_train_rois_out(self): return convert_to_abspath(self.__train_rois_out)
+    def get_train_max_workers(self): return self.__train_max_workers
+    def get_val_rois_out(self): return convert_to_abspath(self.__val_rois_out)
+    def get_val_max_workers(self): return self.__val_max_workers
+    def get_test_rois_out(self): return convert_to_abspath(self.__test_rois_out)
+    def get_test_max_workers(self): return self.__test_max_workers
     pass
 
 #    CNNs相关配置
@@ -188,7 +216,7 @@ def mkdir_ifnot_exises(_dir):
         os.makedirs(_dir)
     pass
 
-ALL_DICT, DATASET, RPN, CNNS = load_conf_yaml()
+ALL_DICT, DATASET, ROIS, RPN, CNNS = load_conf_yaml()
 
 
 #    写入配置文件

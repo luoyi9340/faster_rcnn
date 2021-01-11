@@ -38,7 +38,8 @@ log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(),
 log.info('training RPNModel begin...')
 #    准备数据集
 db_train = rois.rpn_train_db(image_dir=conf.DATASET.get_in_train(), 
-                             rois_out=conf.RPN.get_train_rois_out(), 
+                             rois_out=conf.ROIS.get_train_rois_out(), 
+                             is_rois_mutiple_file=conf.ROIS.get_train_max_workers() > 0,
                              count_positives=conf.RPN.get_train_positives_every_image(),
                              count_negative=conf.RPN.get_train_negative_every_image(),
                              batch_size=conf.RPN.get_train_batch_size(),
@@ -46,13 +47,14 @@ db_train = rois.rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                              y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
 log.info('db_train rois finished.')
 log.info('db_train rois image_dir:%s', conf.DATASET.get_in_train())
-log.info('db_train rois rois_out:%s', conf.RPN.get_train_rois_out())
+log.info('db_train rois rois_out:%s', conf.ROIS.get_train_rois_out())
 log.info('db_train rois count_positives:%d count_negative:%d batch_size:%d', conf.RPN.get_train_positives_every_image(), conf.RPN.get_train_negative_every_image(), conf.RPN.get_train_batch_size())
 log.info('db_train:{}'.format(db_train))
 
 
 db_val = rois.rpn_train_db(image_dir=conf.DATASET.get_in_val(), 
-                           rois_out=conf.RPN.get_val_rois_out(), 
+                           rois_out=conf.ROIS.get_val_rois_out(), 
+                           is_rois_mutiple_file=conf.ROIS.get_val_max_workers() > 0,
                            count_positives=conf.RPN.get_train_positives_every_image(),
                            count_negative=conf.RPN.get_train_negative_every_image(),
                            batch_size=conf.RPN.get_train_batch_size(),
@@ -60,7 +62,7 @@ db_val = rois.rpn_train_db(image_dir=conf.DATASET.get_in_val(),
                            y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
 log.info('db_val rois finished.')
 log.info('db_val rois image_dir:%s', conf.DATASET.get_in_val())
-log.info('db_val rois rois_out:%s', conf.RPN.get_val_rois_out())
+log.info('db_val rois rois_out:%s', conf.ROIS.get_val_rois_out())
 log.info('db_val rois count_positives:%d count_negative:%d batch_size:%d', conf.RPN.get_train_positives_every_image(), conf.RPN.get_train_negative_every_image(), conf.RPN.get_train_batch_size())
 log.info('db_val:{}'.format(db_train))
 
