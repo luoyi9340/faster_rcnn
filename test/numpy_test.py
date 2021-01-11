@@ -5,105 +5,99 @@
 Created on 2021年1月1日
 '''
 import numpy as np
+import math
 
 
-#    [IoU, [x(中心点), y(中心点), w, h, idx_w, idx_h, idx_area, idx_scales], ["验证码值", x(左上点), y(左上点), w, h]]
-# a = [
-#         [-1, [0,0,0,0,0,0,0,0]],
-#         [-1, [0,0,0,0,0,0,0,0]]
-#     ]
-# b = [
-#         ['', 0,0,0,0],
-#         ['', 0,0,0,0]
-#     ]
-# a = np.c_[a, b]
-# print(a)
-# if (len(a) < 10):
-#     a = a + [[-1, [0,0,0,0,0,0,0,0], ['', 0,0,0,0]] for i in range(10 - len(a))]
-# print(len(a))
+IMAGE_HEIGHT = 180
+IMAGE_WEIGHR = 480
+B, H, W, K = 2, 2, 2, 4
+
+a = np.random.uniform(size=(B,H,W, 6, K))
+[p,n,reg] = np.split(a, [1,2], axis=3)
+p[p <= 0.5] = 0
+
+tmp = np.zeros_like(p)
+tmp[p > 0.5] = 1
+tmp = np.repeat(tmp, K, axis=3)
+reg = tmp * reg
+
+a = np.concatenate([p, reg], axis=3)        #    a.shape=(batch_size, h, w, 5, K)。a[b,h,w]的每列代表一个anchor，每列数据为[prob, d[x], d[y], d[w], d[h]]
+a = np.transpose(a, axes=(0,1,2, 4,3))      #    a.shape=(batch_size, h, w, K, 5)。a[b,h,w]的每行代表一个anchor，每行数据为[prob, d[x], d[y], d[w], d[h]]
+#    给a的每行追加h[0,H), w[0,W), anchor[0,K)索引。扩充后a.shape=(2,2,2, 4, 8)。a[b,h,w]每行数据为[prob, d[x], d[y], d[w], d[h], idx_h, idx_w, idx_anchor]
+idx_anchor = np.arange(K)                   #    得到单位anchor索引shape=(K)
+idx_anchor = np.concatenate([idx_anchor for _ in range(H*W)])
+idx_anchor = np.reshape(idx_anchor, newshape=(len(idx_anchor), 1))
+idx_w, idx_h = np.meshgrid(range(W), range(H))
+idx_w = np.reshape(idx_w, newshape=H*W)
+idx_h = np.reshape(idx_h, newshape=H*W)
+idx = np.concatenate([np.expand_dims(idx_h, axis=0), np.expand_dims(idx_w, axis=0)], axis=0)
+idx = np.transpose(idx, axes=(1, 0))        #    得到单位h,w索引 shape=(H*W, 2)
+idx = np.repeat(idx, K, axis=0)             #    (H*W, 2)扩展为(H*W*K, 2)
+idx = np.concatenate([idx, idx_anchor], axis=1)
+idx = np.reshape(idx, newshape=(H, W, K, 3))
+idx = np.repeat(np.expand_dims(idx, axis=0), B, axis=0)
+a = np.concatenate([a, idx], axis=4)
+
+#    过滤掉概率为0的
+a = a[a[:,:,:,:,0] > 0]
+#    按概率降序
+a = a[np.argsort(a[:,0])[::-1]]
+print(a)
+
+#    NMS
+#    保存anchor. [前景概率, xl,yl(左上), xr,yr(右下), 面积]
+anchors = np.zeros(shape=(a.shape[0], 6))
+anchors[:,0] = a[:,0]
+#    按照原图[180*480], 特征图的缩放比8, roi_area=[64,68,72,76,84] roi_scales=[0.75, 1, 1.25]还原[xl,yl,xr,yr]
+feature_map_scaling = 8
+IMAGE_HEIGHT = 180
+IMAGE_WEIGHR = 480
+roi_area = np.array([64, 68])
+roi_scales = np.array([0.75, 1])
+#    还原左上点坐标
+anchors[:,1] = a[:,5] * feature_map_scaling
+anchors[:,2] = a[:,6] * feature_map_scaling
+#    还原右下点坐标
+# print(a[:,7].astype(np.int8))
+# print(roi_area[(a[:,7] / len(roi_scales)).astype(np.int8)])
+# print(roi_scales[(a[:,7] % len(roi_scales)).astype(np.int8)])
+#    右下点坐标 = 左上点坐标 + 宽高
+anchors[:,3] = anchors[:,1] + np.around(roi_area[(a[:,7] / len(roi_scales)).astype(np.int8)] * roi_scales[(a[:,7] % len(roi_scales)).astype(np.int8)])
+anchors[:,4] = anchors[:,2] + np.around(roi_area[(a[:,7] / len(roi_scales)).astype(np.int8)] / roi_scales[(a[:,7] % len(roi_scales)).astype(np.int8)])
+#    计算每个anchor自身的面积
+anchors[:,5] = np.abs(anchors[:,3] - anchors[:,1]) * np.abs(anchors[:,4] - anchors[:,2])
+anchors.astype(np.float32)
+#    非极大值抑制
+nms = [] 
+threshold = 0.99
+while (len(anchors) > 0):
+    max_prob_anchor = anchors[0]
+    nms.append(max_prob_anchor)
+    anchors = np.delete(anchors, 0, axis=0)
+    
+    if (len(anchors) == 0): break
+
+    #    计算max与其他anchor的IoU
+    #    计算交点处的左上、右下坐标
+    xl = np.maximum(max_prob_anchor[1], anchors[:,1], dtype=np.float32)
+    yl = np.maximum(max_prob_anchor[2], anchors[:,2], dtype=np.float32)
+    xr = np.minimum(max_prob_anchor[3], anchors[:,3], dtype=np.float32)
+    yr = np.minimum(max_prob_anchor[4], anchors[:,4], dtype=np.float32)
+    #    计算交集、并集面积
+    w = np.maximum(0., np.abs(xr - xl))
+    h = np.maximum(0., np.abs(yr - yl))
+    areas_intersection = w * h
+    areas_union = (np.add(max_prob_anchor[5], anchors[:,5]) - areas_intersection).astype(np.float32)
+    IoU = (areas_intersection / (areas_union + areas_intersection)).astype(np.float32)
+    print(areas_intersection)
+    print(areas_union)
+    print(IoU)
+    print()
+    #    剔除掉IoU>阈值的部分
+    anchors = anchors[np.where(IoU <= threshold)]
+    pass
+nms = np.array(nms)
+print(nms[:,0], nms[:,1:])
 
 
-# a = [[1,1,1]]
-# b = [[2,2,2]]
-# print(a + b)
 
-
-# a = np.arange(start=0.1, stop=1, step=0.1)
-# b = np.arange(start=0.1, stop=0.5, step=0.1)
-# a = np.hstack([a, b])
-# print(a)
-# print(np.count_nonzero((1-a) > 0.7))
-
-
-#    自定义的loss里没法用numpy，只能fit之前根据y_true整一个跟feature_maps尺寸一样的张量，loss里直接跟y_pred运算（类似one_hot）
-# zt = np.zeros(shape=(3,3,3))
-# #    (0,0,0) = 1, (1,1,1)=2, (2,2,2)=3
-# # zt[0,0,0] = 1
-# # zt[1,1,1] = 2
-# # zt[2,2,2] = 3
-# idx = [[0,0,0], [1,1,1], [2,2,2]]
-# a1, a2, a3 = zip(*idx)
-# print(a1)
-# print(a2)
-# print(a3)
-# a1 = tuple([0,1,2])
-# a2 = tuple([0,1,2])
-# a3 = tuple([0,1,2])
-# zt[a1, a2, a3] = [1,2,3]
-# print(zt)
-feature_maps =np.random.uniform(size=(4,4,6,4), low=0, high=100).astype(np.int8)
-y_true = [
-            [0.75, 1, 2, 10, 10, 0, 0, 0, 0, 15, 0, 0, 10, 10],            #    (x,y)=(0,0) c=0*2+0=0
-            [0.75, 1, 2, 10, 10, 1, 1, 0, 1, 15, 10, 10, 10, 10],          #    (x,y)=(1,1) c=0*2+1=1
-            [0.25, 1, 2, 10, 10, 2, 2, 1, 0, 15, 20, 20, 10, 10],          #    (x,y)=(2,2) c=1*2+0=2
-            [0.25, 1, 2, 10, 10, 3, 3, 1, 1, 15, 30, 30, 10, 10]           #    (x,y)=(2,3) c=1*2+1=3
-        ]
-y_true = np.array(y_true)
-y_true_positives = y_true[(y_true[:,0] > 0.7)]
-y_true_negative = y_true[(y_true[:,0] < 0.3)]
-# idx_fmap = y_true[:, [5,6]]
-# idx_anchor = y_true[:, [7,8]]
-zero_template = np.zeros(shape=(4, 4, 6, 4))
-#    正样本的前景概率置为1
-idx_fmap = y_true_positives[:, [5,6]].astype(np.int8)
-idx_anchor = y_true_positives[:, [7,8]].astype(np.int8)
-idx_anchor = idx_anchor[:,0] * 2 + idx_anchor[:,1]
-idx_anchor = tuple(idx_anchor)
-fmap_w = tuple(idx_fmap[:,0])
-fmap_h = tuple(idx_fmap[:,1])
-zero_template[fmap_w, fmap_h, 0, idx_anchor] = 1
-#    负样本的背景规律置为1
-idx_fmap = y_true_negative[:, [5,6]].astype(np.int8)
-idx_anchor = y_true_negative[:, [7,8]].astype(np.int8)
-idx_anchor = idx_anchor[:,0] * 2 + idx_anchor[:,1]
-idx_anchor = tuple(idx_anchor)
-fmap_w = tuple(idx_fmap[:,0])
-fmap_h = tuple(idx_fmap[:,1])
-zero_template[fmap_w, fmap_h, 1, idx_anchor] = 1
-#    计算所有正样本的t[*]
-Gx = y_true_positives[:,10] + y_true_positives[:,12]/2
-Gy = y_true_positives[:,11] + y_true_positives[:,13]/2
-Gw = y_true_positives[:,12]
-Gh = y_true_positives[:,13]
-Px = y_true_positives[:,1]
-Py = y_true_positives[:,2]
-Pw = y_true_positives[:,3]
-Ph = y_true_positives[:,4]
-Tx = (Gx - Px) * Pw         #    计算t[x] = (G[x] - P[x]) * P[w]
-Ty = (Gy - Py) * Ph         #    计算t[y] = (G[y] - P[y]) * P[h]
-Tw = np.log(Gw / Pw)        #    计算t[w] = log(G[w] / P[w])
-Th = np.log(Gh / Ph)        #    计算t[h] = log(G[h] / P[h])
-#    根据fmap索引和anchor索引写入模板
-idx_fmap = y_true_positives[:, [5,6]].astype(np.int8)
-idx_anchor = y_true_positives[:, [7,8]].astype(np.int8)
-idx_anchor = idx_anchor[:,0] * 2 + idx_anchor[:,1]
-idx_anchor = tuple(idx_anchor)
-fmap_w = tuple(idx_fmap[:,0])
-fmap_h = tuple(idx_fmap[:,1])
-print(fmap_w, fmap_h, idx_anchor)
-print(Tx, Ty, Tw, Th)
-zero_template[fmap_w, fmap_h, 2, idx_anchor] = Tx
-zero_template[fmap_w, fmap_h, 3, idx_anchor] = Ty
-zero_template[fmap_w, fmap_h, 4, idx_anchor] = Tw
-zero_template[fmap_w, fmap_h, 5, idx_anchor] = Th
-print(zero_template)

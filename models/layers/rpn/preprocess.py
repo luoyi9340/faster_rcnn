@@ -128,3 +128,47 @@ def takeout_sample(ytrue_maps, feature_maps):
     ymaps_reg_p = tf.where(ytrue_maps_reg > 0, ytrue_maps_reg, zeros_tmp_reg)
     
     return (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p)
+
+
+#    从fmaps拿全部判定为正样本的anchor
+def all_positives_from_fmaps(fmaps, 
+                             threshold=conf.RPN.get_nms_threshold_positives(), 
+                             K=conf.RPN.get_K()):
+    '''从fmaps拿全部判定为正样本的anchor
+        @param fmaps: numpy(num, H, W, 6, K) RPNModel拿到的特征图
+        @param threshold: 判定正样本的阈值。(num, H, W, 0, K) > 此值判定为正样本
+        @return: (num, 8)
+                    (num, 0)     判定正样本的概率
+                    (num, 1~4)   d[x], d[y], d[w], d[h]
+                    (num, 5~7)   idx_h(相对于特征图)，idx_w(相对于特征图)，idx_anchor(K的idx)
+    '''
+    B, H, W = fmaps.shape[0], fmaps.shape[1], fmaps.shape[2]
+    
+    [fmaps_p, _, fmaps_reg] = np.split(fmaps, [1,2], axis=3)
+    fmaps_p[fmaps_p <= threshold] = 0
+    
+    tmp = np.zeros_like(fmaps_p)
+    tmp[fmaps_p > 0.5] = 1
+    tmp = np.repeat(tmp, K, axis=3)
+    fmaps_reg = tmp * fmaps_reg
+    
+    fmaps = np.concatenate([fmaps_p, fmaps_reg], axis=3)            #    a.shape=(batch_size, h, w, 5, K)。a[b,h,w]的每列代表一个anchor，每列数据为[prob, d[x], d[y], d[w], d[h]]
+    fmaps = np.transpose(fmaps, axes=(0,1,2, 4,3))                  #    a.shape=(batch_size, h, w, K, 5)。a[b,h,w]的每行代表一个anchor，每行数据为[prob, d[x], d[y], d[w], d[h]]
+    #    给a的每行追加h[0,H), w[0,W), anchor[0,K)索引。扩充后a.shape=(2,2,2, 4, 8)。a[b,h,w]每行数据为[prob, d[x], d[y], d[w], d[h], idx_h, idx_w, idx_anchor]
+    idx_anchor = np.arange(K)                                       #    得到单位anchor索引shape=(K)
+    idx_anchor = np.concatenate([idx_anchor for _ in range(H*W)])
+    idx_anchor = np.reshape(idx_anchor, newshape=(len(idx_anchor), 1))
+    idx_w, idx_h = np.meshgrid(range(W), range(H))
+    idx_w = np.reshape(idx_w, newshape=H*W)
+    idx_h = np.reshape(idx_h, newshape=H*W)
+    idx = np.concatenate([np.expand_dims(idx_h, axis=0), np.expand_dims(idx_w, axis=0)], axis=0)
+    idx = np.transpose(idx, axes=(1, 0))                            #    得到单位h,w索引 shape=(H*W, 2)
+    idx = np.repeat(idx, K, axis=0)                                 #    (H*W, 2)扩展为(H*W*K, 2)
+    idx = np.concatenate([idx, idx_anchor], axis=1)
+    idx = np.reshape(idx, newshape=(H, W, K, 3))
+    idx = np.repeat(np.expand_dims(idx, axis=0), B, axis=0)
+    fmaps = np.concatenate([idx_anchor, idx], axis=4)               #    追加索引, fmaps.shape(batch_size, h, w, K, 8)
+    
+    #    过滤掉概率为0的
+    fmaps = fmaps[fmaps[:,:,:,:,0] > threshold]                     #    fmaps.shape=(num, 8)
+    return fmaps

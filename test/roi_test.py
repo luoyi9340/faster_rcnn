@@ -30,7 +30,7 @@ def show_anchors(fa,
      
     #    打印找到的anchors
     if (is_show_positive):
-        print(len(fa['positives']))
+        print('positives:', len(fa['positives']))
         for (iou, anchor, label) in fa['positives']:
             rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'red',linewidth=1)
             ax.add_patch(rect)
@@ -38,12 +38,12 @@ def show_anchors(fa,
         pass
     #    打印找到的anchors
     if (is_show_negative):
-        print(len(fa['negative']))
+        print('negative:', len(fa['negative']))
         i = 0
         for (iou, anchor) in fa['negative']:
             if (i > count_negative): break;
             i += 1
-            rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'red',linewidth=1)
+            rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'green',linewidth=1)
             ax.add_patch(rect)
             pass
         pass
@@ -57,7 +57,7 @@ def show_anchors(fa,
     #    打印全部的anchors
     if (is_show_anchors):
         for anchor in rois_creator._original_anchors:
-            rect = plot.Rectangle((anchor[0]-anchor[2]/2, anchor[1]-anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor='green',linewidth=1)
+            rect = plot.Rectangle((anchor[0]-anchor[2]/2, anchor[1]-anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor='yellow',linewidth=1)
             ax.add_patch(rect)
         #     plot.scatter(anchor[0], anchor[1])
             pass
@@ -98,10 +98,12 @@ file_anchors = rois_creator.test_create(label_file_path=DATASET.get_label_train(
                                         count=100, 
                                         train_positives_iou=0.7,
                                         train_negative_iou=0.05)
-fa = file_anchors[0]
+fa = file_anchors[1]
 show_anchors(fa, 
              is_show_positive=False, 
-             is_show_negative=True, 
-             is_show_labels=False, 
-             is_show_anchors=False)
+             is_show_negative=False, 
+             is_show_labels=True, 
+             is_show_anchors=True)
+
+
 

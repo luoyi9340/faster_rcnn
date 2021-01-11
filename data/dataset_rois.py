@@ -207,8 +207,8 @@ class RoisCreator():
                                 roi_scales=[0.5, 1, 2]
                                 ):
         #    根据W ,H和feature_map_scaling一次计算所有的中心点坐标
-        w_u, h_u = W / (W / feature_map_scaling), H / (H / feature_map_scaling)             #    按照缩放比例计算小区域长宽（特征图中每个点对应原图区域的长宽）
-#         p_all = (W / feature_map_scaling) * (H / feature_map_scaling)                       #    总点数
+        w_u, h_u = feature_map_scaling, feature_map_scaling                                 #    按照缩放比例计算小区域长宽（特征图中每个点对应原图区域的长宽）
+#         p_all = (W / feature_map_scaling) * (H / feature_map_scaling)                     #    总点数
         w, h = w_u / 2, h_u / 2                                                             #    第一个点坐标
         anchors = []
         count_point = 0

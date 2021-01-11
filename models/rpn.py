@@ -6,6 +6,7 @@ RPN模型
 Created on 2021年1月5日
 '''
 import tensorflow as tf
+import numpy as np
 
 import models
 import models.layers.rpn as rpn
@@ -47,6 +48,7 @@ class RPNModel(models.AModel):
             pass
         pass
     
+
     #    优化器
     def optimizer(self, net, learning_rate=0.9):
         return tf.optimizers.Adam(learning_rate=learning_rate)
@@ -79,4 +81,57 @@ class RPNModel(models.AModel):
         net.add(self.cnns)
         net.add(self.rpn)
         pass
+    
+    
+    #    测试
+    def test(self, X, batch_size=2):
+        '''测试
+            @param X: 测试数据(num, h, w, 3)
+            @param batch_size: 批量
+            @return: 特征图(num, h, w, 6, K)
+        '''
+        fmaps = self._net.predict(X, batch_size=batch_size)
+        return fmaps
+    #    统计分类数据
+    def test_cls(self, fmaps, ymaps):
+        '''统计分类数据
+            @param fmaps: Tensor(num, h, w, 6, K) test函数返回的特征图
+            @param ymaps: Numpy(num, h, w, 6, K) 与fmaps对应的标签特征图
+            @return: TP, TN, FP, TN, P, N
+        '''
+        ymaps = tf.convert_to_tensor(ymaps)
+        (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = rpn.takeout_sample(ymaps, fmaps)
+        return rpn.RPNMetricCls().tp_tn_fp_tf_p_n(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n)
+    #    计算回归的平均绝对误差
+    def test_mae(self, fmaps, ymaps):
+        '''计算回归的平均绝对误差
+            @param fmaps: Tensor(num, h, w, 6, K) test函数返回的特征图
+            @param ymaps: Numpy(num, h, w, 6, K) 与fmaps对应的标签特征图
+            @return: MAE
+        '''
+        ymaps = tf.convert_to_tensor(ymaps)
+        (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = rpn.takeout_sample(ymaps, fmaps)
+        return rpn.RPNMetricReg().mae(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
+    
+    
+    #    生成全部建议框
+    def candidate_box_from_fmap(self, 
+                                fmaps, 
+                                threshold_prob=conf.RPN.get_nms_threshold_positives(), 
+                                threshold_iou=conf.RPN.get_nms_threshold_iou(), 
+                                K=conf.RPN.get_K(),
+                                roi_areas = conf.RPN.get_roi_areas(),
+                                roi_scales = conf.RPN.get_roi_scales()):
+        '''根据模型输出的fmaps生成全部候选框（所有被判定为前景的anchor，过nms）
+            @param fmaps: numpy(num, h, w, 6, K)
+            @param threshold_prob: 判定为前景的阈值
+            @param threshold_iou: NMS中用到的IoU阈值。超过此阈值的anchor会被判定为重叠的anchor过滤掉
+            @param K: 特征图中每个像素点对应多少个anchor(roi_areas * roi_scales的组合)
+            @param roi_areas: anchor面积比划分(1:1时的长宽值)
+            @param roi_scales: anchor长宽比划分
+            @requires: numpy(num, [])
+        '''
+        #    取fmaps中生成的所有被判定为前景的anchor
+        anchors = rpn.all_positives_from_fmaps(fmaps, threshold=threshold_prob, K=K)
+        return rpn.nms(anchors, threshold=threshold_iou, roi_areas=roi_areas, roi_scales=roi_scales)
     pass

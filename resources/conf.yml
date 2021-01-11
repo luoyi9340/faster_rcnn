@@ -63,6 +63,10 @@ rpn:
    #   - 2
    #   用的什么cnns网络（resnet32 | resnet50）
    cnns: resnet34
+   #   nms中判定为前景的最小置信度（大于此概率的anchor会被判定为）
+   nms_threshold_positives: 0.5
+   #   nms中判定为重叠的最小IoU（大于此IoU的anchor会被判定为重叠而被过滤掉）
+   nms_threshold_iou: 0.7
    
       
       

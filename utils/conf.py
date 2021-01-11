@@ -52,7 +52,9 @@ def load_conf_yaml():
               c['rpn']['tensorboard_dir'],
               c['rpn']['roi_areas'],
               c['rpn']['roi_scales'],
-              c['rpn']['cnns'])
+              c['rpn']['cnns'],
+              c['rpn']['nms_threshold_positives'],
+              c['rpn']['nms_threshold_iou'])
     
     cnns = CNNs(c['cnns']['feature_map_scaling'])
     
@@ -104,7 +106,9 @@ class Rpn():
                  tensorboard_dir="logs/tensorboard",
                  roi_areas=[128, 256, 512],
                  roi_scales=[0.5, 1., 2.],
-                 cnns='reset_34'):
+                 cnns='reset_34',
+                 nms_threshold_positives=0.5,
+                 nms_threshold_iou=0.7):
         self.__train_rois_out = train_rois_out
         self.__val_rois_out = val_rois_out
         self.__test_rois_out = test_rois_out
@@ -122,6 +126,8 @@ class Rpn():
         self.__roi_scales = roi_scales
         self.__K = len(roi_areas) * len(roi_scales)
         self.__cnns = cnns
+        self.__nms_threshold_positives = nms_threshold_positives
+        self.__nms_threshold_iou = nms_threshold_iou
         pass
     def get_train_rois_out(self): return convert_to_abspath(self.__train_rois_out)
     def get_val_rois_out(self): return convert_to_abspath(self.__val_rois_out)
@@ -140,6 +146,8 @@ class Rpn():
     def get_roi_scales(self): return self.__roi_scales
     def get_K(self): return self.__K
     def get_cnns(self): return self.__cnns
+    def get_nms_threshold_positives(self): return self.__nms_threshold_positives
+    def get_nms_threshold_iou(self): return self.__nms_threshold_iou
     pass
 
 #    CNNs相关配置
@@ -198,6 +206,6 @@ def write_conf(_dict, file_path):
         pass
     
     fw = open(file_path, mode='w', encoding='utf-8')
-    yaml.dump(_dict, fw)
+    yaml.safe_dump(_dict, fw)
     fw.close()
     pass
