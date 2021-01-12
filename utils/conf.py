@@ -10,7 +10,7 @@ import yaml
 import os
 
 
-#    取项目根目录
+#    取项目根目录（其他一切相对目录在此基础上拼接）
 ROOT_PATH = os.path.abspath(os.path.dirname(__file__)).split('faster_rcnn')[0]
 ROOT_PATH = ROOT_PATH + "faster_rcnn"
 
