@@ -26,7 +26,6 @@ class ROIPooling(tf.keras.layers.Layer):
     def call(self, x, training=None, mask=None):
         #    取h轴，w轴的切分系数
         (h_s, w_s) = self.__split_coefficient(x, self.__out_size)
-        print(h_s, w_s)
         
         #    先切h轴，再切w轴
         x_h = tf.split(x, h_s, axis=1)
