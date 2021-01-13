@@ -39,7 +39,7 @@ log.info('training RPNModel begin...')
 #    准备数据集
 db_train = rois.rpn_train_db(image_dir=conf.DATASET.get_in_train(), 
                              rois_out=conf.ROIS.get_train_rois_out(), 
-                             is_rois_mutiple_file=conf.ROIS.get_train_max_workers() > 0,
+                             is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(),
                              count_positives=conf.RPN.get_train_positives_every_image(),
                              count_negative=conf.RPN.get_train_negative_every_image(),
                              batch_size=conf.RPN.get_train_batch_size(),
@@ -54,7 +54,7 @@ log.info('db_train:{}'.format(db_train))
 
 db_val = rois.rpn_train_db(image_dir=conf.DATASET.get_in_val(), 
                            rois_out=conf.ROIS.get_val_rois_out(), 
-                           is_rois_mutiple_file=conf.ROIS.get_val_max_workers() > 0,
+                           is_rois_mutiple_file=conf.DATASET.get_label_val_mutiple(),
                            count_positives=conf.RPN.get_train_positives_every_image(),
                            count_negative=conf.RPN.get_train_negative_every_image(),
                            batch_size=conf.RPN.get_train_batch_size(),
