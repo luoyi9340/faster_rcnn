@@ -5,6 +5,8 @@
 @author: luoyi
 Created on 2020年12月31日
 '''
+import os
+import sys
 import math
 import numpy as np
 import utils.math_expand as me
@@ -29,4 +31,13 @@ import utils.math_expand as me
 v = [15.892754, 22.423492, 8.592064, 2.077179, 3.9427366, 9.163124, 11.612677, 8.563061, 32.494835, 27.48685, 11.758651, 34.368156, 14.096106, 4.6647234, 17.268024, 44.83168]
 v = np.array(v)
 print(np.mean(v))
+
+
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+PathProject = os.path.split(rootPath)[0]
+# sys.path.append(rootPath)
+print(rootPath)
+# sys.path.append(PathProject)
+print(PathProject)
 

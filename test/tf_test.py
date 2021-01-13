@@ -13,8 +13,11 @@ import sys
 
 import utils.math_expand as em
 import utils.alphabet as al
+import models.layers.roi_pooling as roi_pooling
+from tensorflow.python.ops.gen_sdca_ops import sdca_fprint
 
 
+print(tf.version.VERSION)
 # x = tf.convert_to_tensor([
 #         [[1,2,3,1,2,3]],
 #         [[1,2,3,1,2,3]]
@@ -215,29 +218,80 @@ def console_handler(log_fmt="%(asctime)s-%(name)s-%(levelname)s-%(message)s", lo
 
 
 #    日志
-log = tf._logging.getLogger('aaaa')
-#    打印到文件
-log_level = tf._logging.INFO
-log.setLevel(log_level)
-log_path = '/Users/irenebritney/Desktop/workspace/eclipse-workspace2/faster_rcnn/logs/tf_test.log'
-    
-log_handler = tf._logging.FileHandler(log_path, encoding='utf-8')
-log_handler.setLevel(log_level)
-    
-log_fmt = '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
-fmt = tf._logging.Formatter(log_fmt)
-log_handler.setFormatter(fmt)
-log.addHandler(log_handler)
+# log = tf._logging.getLogger('aaaa')
+# #    打印到文件
+# log_level = tf._logging.INFO
+# log.setLevel(log_level)
+# log_path = '/Users/irenebritney/Desktop/workspace/eclipse-workspace2/faster_rcnn/logs/tf_test.log'
+#     
+# log_handler = tf._logging.FileHandler(log_path, encoding='utf-8')
+# log_handler.setLevel(log_level)
+#     
+# log_fmt = '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+# fmt = tf._logging.Formatter(log_fmt)
+# log_handler.setFormatter(fmt)
+# log.addHandler(log_handler)
+# 
+# #    打印到控制台
+# log.addHandler(console_handler(log_fmt=log_fmt, log_level=log_level))
+# 
+# 
+# t = tf.convert_to_tensor(5, dtype=tf.float32)
+# # sys.stderr = open(log_path, mode='a', encoding='utf-8')
+# # log.info(t)
+# 
+# tf.print(t, output_stream='file:///Users/irenebritney/Desktop/workspace/eclipse-workspace2/faster_rcnn/logs/tf_test.log')
 
-#    打印到控制台
-log.addHandler(console_handler(log_fmt=log_fmt, log_level=log_level))
 
 
-t = tf.convert_to_tensor(5, dtype=tf.float32)
-# sys.stderr = open(log_path, mode='a', encoding='utf-8')
-# log.info(t)
+#    roi_pooling
+#    将10*10切成5个2*2
+# x = tf.cast(tf.random.uniform(shape=(10, 10), minval=1, maxval=10), dtype=tf.int8)
+# xs = tf.split(x, [2,2,2,2,2], axis=0)           #    切成5个2*10
+# res = []
+# for x_ in xs:                                   #    将每个2*10切成5个2*2
+#     res.append(tf.split(x_, [2,2,2,2,2], axis=1))
+#     pass
+# print(res)
+#    将H*W roipooling 成kw*kh
+# B, H, W, C = 1, 20, 20, 1
+# kh, kw = 7, 7
+# x = tf.cast(tf.random.uniform(shape=(B, H, W, C), minval=1, maxval=10), dtype=tf.int8)
+# print(x)
+# hu = round(H / kh)
+# h_s = [hu for _ in range(kh)]
+# h_s[-1] += H - kh * hu
+# wu = round(W / kw)
+# w_s = [wu for _ in range(kw)]
+# w_s[-1] += W - kw * wu
+# print(h_s)
+# print(w_s)
+# 
+# #    先切H，再切W。
+# x_h = tf.split(x, h_s, axis=1)
+# idx_h, idx_w = 0, 0
+# T = []
+# for xh in x_h:
+#     idx_w = 0
+#     x_h = tf.split(xh, w_s, axis=2)
+#     t = []
+#     for xw in x_h:
+#         t.append(tf.nn.max_pool2d(xw, ksize=[h_s[idx_h], w_s[idx_w]], strides=[h_s[idx_h], w_s[idx_w]], padding='VALID'))
+#         idx_w += 1
+#         pass
+#     T.append(t)
+#     idx_h += 1
+#     pass
+# #    拼的时候先拼W，再拼H
+# res = []
+# for t in T:
+#     res.append(tf.concat(t, axis=2))
+#     pass
+# res = tf.concat(res, axis=1)
+# print(res)
 
-tf.print(t, output_stream='file:///Users/irenebritney/Desktop/workspace/eclipse-workspace2/faster_rcnn/logs/tf_test.log')
-
-
-
+x = tf.random.uniform(shape=(2, 7, 7, 1))
+print(x)
+roi_pooling = roi_pooling.ROIPooling(name='test roi_pooling', out_size=(3, 3))
+y = roi_pooling(x)
+print(y)
