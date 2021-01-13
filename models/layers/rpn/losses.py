@@ -80,7 +80,7 @@ class RPNLoss(tf.keras.losses.Loss):
                 对于负样本：loss = 1/N[n] Σ(i=-1>N[n]) (-log((1 - p_pred[i]) * (1 - p_true[i])))
         '''
         #    计算正样本loss
-        loss_cls_p = -ymaps_cls_p * tf.math.log(fmaps_cls_p)
+        loss_cls_p = -ymaps_cls_p * tf.math.log(tf.clip_by_value(fmaps_cls_p, 1e-10, 1.0))
         loss_cls_p = tf.where(tf.math.is_nan(loss_cls_p), tf.zeros_like(loss_cls_p), loss_cls_p)        #    ymaps_cls_p中存在大量的0值，过log函数会变成nan
         # loss_cls_p = tf.reduce_mean(loss_cls_p, axis=(1,2,3,4))                                       #    大量的0值也会占用mean的计算名额，所以不能用reduce_mean
         count_p = tf.cast(tf.math.count_nonzero(ymaps_cls_p, axis=(1,2,3,4)), dtype=tf.float32)          #    每个batch_size正样本总数
