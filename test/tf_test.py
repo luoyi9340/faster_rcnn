@@ -17,7 +17,6 @@ import models.layers.roi_pooling as roi_pooling
 from tensorflow.python.ops.gen_sdca_ops import sdca_fprint
 
 
-print(tf.version.VERSION)
 # x = tf.convert_to_tensor([
 #         [[1,2,3,1,2,3]],
 #         [[1,2,3,1,2,3]]
@@ -289,9 +288,14 @@ def console_handler(log_fmt="%(asctime)s-%(name)s-%(levelname)s-%(message)s", lo
 #     pass
 # res = tf.concat(res, axis=1)
 # print(res)
+#    测试roi_pooling层
+# x = tf.random.uniform(shape=(2, 7, 7, 1))
+# print(x)
+# roi_pooling = roi_pooling.ROIPooling(name='test roi_pooling', out_size=(3, 3))
+# y = roi_pooling(x)
+# print(y)
 
-x = tf.random.uniform(shape=(2, 7, 7, 1))
-print(x)
-roi_pooling = roi_pooling.ROIPooling(name='test roi_pooling', out_size=(3, 3))
-y = roi_pooling(x)
+
+y = tf.random.uniform(shape=(4, 4)) * 100
+y = tf.clip_by_value(y, 1e-10, 1.0)
 print(y)

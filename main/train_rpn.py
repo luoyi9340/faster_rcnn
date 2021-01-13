@@ -34,6 +34,14 @@ log.info('rpn_model finished.')
 log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(), conf.CNNS.get_feature_map_scaling(), conf.RPN.get_loss_lamda())
 
 
+#    一些全局参数
+#    单epoch数据总数
+total_sample_train = rois.total_sample(is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
+                                       count=conf.DATASET.get_count_train(), 
+                                       rois_out=conf.DATASET.get_label_train())
+batch_size = conf.RPN.get_train_batch_size()
+epochs = conf.RPN.get_train_epochs()
+
 
 log.info('training RPNModel begin...')
 #    准备数据集
@@ -42,7 +50,7 @@ db_train = rois.rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                              is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(),
                              count_positives=conf.RPN.get_train_positives_every_image(),
                              count_negative=conf.RPN.get_train_negative_every_image(),
-                             batch_size=conf.RPN.get_train_batch_size(),
+                             batch_size=batch_size,
                              ymaps_shape=rpn_model.rpn.get_output_shape(),
                              y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
 log.info('db_train rois finished.')
@@ -57,7 +65,7 @@ db_val = rois.rpn_train_db(image_dir=conf.DATASET.get_in_val(),
                            is_rois_mutiple_file=conf.DATASET.get_label_val_mutiple(),
                            count_positives=conf.RPN.get_train_positives_every_image(),
                            count_negative=conf.RPN.get_train_negative_every_image(),
-                           batch_size=conf.RPN.get_train_batch_size(),
+                           batch_size=batch_size,
                            ymaps_shape=rpn_model.rpn.get_output_shape(),
                            y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
 log.info('db_val rois finished.')
@@ -73,8 +81,9 @@ rpn_model.show_info()
 log.info('rpn_model fitting...')
 #    喂数据
 rpn_model.train_tensor_db(db_train, db_val, 
-                          batch_size=conf.RPN.get_train_batch_size(), 
-                          epochs=conf.RPN.get_train_epochs(), 
+                          batch_size=batch_size, 
+                          epochs=epochs, 
+                          steps_per_epoch=total_sample_train / batch_size,
                           auto_save_weights_after_traind=True, 
                           auto_save_weights_dir=conf.RPN.get_save_weights_dir(), 
                           auto_learning_rate_schedule=True, 

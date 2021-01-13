@@ -91,6 +91,7 @@ class AModel(metaclass=abc.ABCMeta):
     #    训练模型（用tensor_db做数据源）
     def train_tensor_db(self, db_train=None, 
                         db_val=None,
+                        steps_per_epoch=100,
                         batch_size=32, 
                         epochs=5,
                         auto_save_weights_after_traind=True,
@@ -116,16 +117,22 @@ class AModel(metaclass=abc.ABCMeta):
                                    auto_learning_rate_schedule, 
                                    auto_tensorboard, auto_tensorboard_dir)
         
-        #    貌似没什么用。。。
-        db_train.repeat(epochs)
-        
-        his = self._net.fit(x=db_train,
-                                validation_data=db_val, 
-                                batch_size=batch_size, 
-                                verbose=1, 
-                                epochs=epochs,
-                                callbacks=callbacks,
-                                shuffle=False)
+        #    设置数据集重复读几次
+        db_train = db_train.repeat(epochs)
+        his = self._net.fit_generator(db_train, 
+                                      validation_data=db_val,
+                                      steps_per_epoch=steps_per_epoch, 
+                                      epochs=epochs, 
+                                      verbose=1, 
+                                      callbacks=callbacks,
+                                      shuffle=False)
+#         his = self._net.fit(x=db_train,
+#                                 validation_data=db_val, 
+#                                 batch_size=batch_size, 
+#                                 verbose=1, 
+#                                 epochs=epochs,
+#                                 callbacks=callbacks,
+#                                 shuffle=False)
         return his
     #    训练模型
     def train(self, X_train, Y_train,

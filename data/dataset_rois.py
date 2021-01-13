@@ -112,11 +112,15 @@ class RoisCreator():
         num_labels, num_positives, num_negative = 0, 0, 0
         #    单线程模式
         if (max_workers <= 0):
+            idx = 0
             for fpath in label_files:
-                (num_a, num_p, num_n) = self.__create_from_file(fpath, count, rois_out, log_interval)
+                rois_out_fpath = rois_out
+                if (len(label_files) > 1): rois_out_fpath = rois_out + str(idx)
+                (num_a, num_p, num_n) = self.__create_from_file(fpath, count, rois_out_fpath, log_interval)
                 num_labels += num_a
                 num_positives += num_p
                 num_negative += num_n
+                idx += 1
             pass
         #    多线程模式
         else:
@@ -447,6 +451,7 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
         @param count_negative: 每张图片多少个负样本
         @param batch_size: 数据集的batch_size
         @param ymaps_shape: 特征图尺寸（参照one_hot做法会把label数据提前做成特征图的尺寸给到模型）
+        @param count: 数据总量
         @param x_preprocess: 训练数据预处理
         @param y_preprocess: 标签数据预处理（做成特征图尺寸就是在这里做的. 参考:rpn.preprocess.preprocess_like_fmaps）
     '''
@@ -464,3 +469,22 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                                         output_shapes=(x_shape, y_shape)).batch(batch_size)
     return db
 
+
+#    根据is_rois_mutiple_file和count取数据总数
+def total_sample(rois_out, is_rois_mutiple_file=False, count=100):
+    '''根据is_rois_mutiple_file和count取数据总数
+        count = count                  单文件模式
+                count * 文件总数        多文件模式
+        @param is_rois_mutiple_file: 是否多文件模式
+        @param count: 单文件总数
+        @param rois_out: roi标签文件
+    '''
+    #    如果非多文件模式，直接返回count
+    if (not is_rois_mutiple_file): return count
+    
+    #    多文件模式 count = count * 文件总数
+    fcount = 0
+    while (os.path.exists(rois_out + str(fcount))):
+        fcount += 1
+        pass
+    return fcount * count
