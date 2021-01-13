@@ -401,7 +401,6 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
             for line in open(fpath, mode='r', encoding='utf-8'):
                 readed += 1
                 if (readed > count): break
-                print('readed:', readed, ' count:', count, ' fpath:', fpath)
                 d = json.loads(line)
                 
                 #    读取图片信息，并且归一化
@@ -438,6 +437,11 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 if (y_preprocess is not None): y = y_preprocess(y)
                 
                 yield x, y
+                pass
+            #    如果循环结束了readed还是==0，说明文件是空的。直接跳出循环
+            if (readed == 0): 
+                log.warn('file is empty, %s', fpath)
+                break;
             pass
         pass
     
