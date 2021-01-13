@@ -353,7 +353,8 @@ def file_writer(rois_out=conf.ROIS.get_train_rois_out()):
 
 
 #    rpn网络单独训练数据集生成器
-def read_rois_generator(rois_out=conf.ROIS.get_train_rois_out(), 
+def read_rois_generator(count=conf.DATASET.get_count_train(),
+                        rois_out=conf.ROIS.get_train_rois_out(), 
                         is_rois_mutiple_file=False,
                         image_dir=conf.DATASET.get_in_train(), 
                         count_positives=conf.RPN.get_train_positives_every_image(),
@@ -370,6 +371,7 @@ def read_rois_generator(rois_out=conf.ROIS.get_train_rois_out(),
                 ...前count_positives个为正样本...
                 ...后count_negative个为负样本...
             ]
+        @param count: 每个文件读取记录数。若文件记录数不够则循环此文件直到够数为止
         @param rois_out: rois.jsons文件完整路径
         @param is_rois_mutiple_file: rois_jsons是否多文件（多文件会从rois.jsons0开始rois.jsons1，rois.jsons2一直往上遍历，直到遍历不到为止）
         @param image_dir: 图片文件目录
@@ -393,48 +395,58 @@ def read_rois_generator(rois_out=conf.ROIS.get_train_rois_out(),
     
     #    遍历所有文件和所有行
     for fpath in label_files:
-        for line in open(fpath, mode='r', encoding='utf-8'):
-            d = json.loads(line)
-            
-            #    读取图片信息，并且归一化
-            file_name = d['file_name']
-            image = PIL.Image.open(image_dir + "/" + file_name + '.png', mode='r')
-            image = image.resize((conf.IMAGE_WEIGHT, conf.IMAGE_HEIGHT),PIL.Image.ANTIALIAS)
-            x = np.asarray(image, dtype=np.float32)
-            #    x数据做前置处理（归一化在这里做）
-            if (x_preprocess is not None):x = x_preprocess(x)
-            
-            
-            #    读取训练数据信息
-            #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
-            positives = d['positives']
-            if (len(positives) > count_positives): positives = positives[0: count_positives]
-            #    整个拉直成(*, 14)维数组
-            positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
-            #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
-            if (len(positives) < count_positives): positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
-            positives = np.array(positives)
-            
-            #    取负样本，并给每个样本补默认lable，如果不足count_negative，用IoU=-1，其他全0补全
-            negative = d['negative']
-            if (len(negative) > count_negative): negative = negative[0: count_negative]
-            #    整个拉直成(*, 9)维数组
-            negative = [[a[0]] + a[1] for a in negative]
-            #    补label标签
-            negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
-            #    如果不足count_negative，用IoU=-1，其他全0补全
-            if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
-    
-            y = np.vstack((positives, negative))
-            #    y数据过前置处理
-            if (y_preprocess is not None): y = y_preprocess(y)
-            yield x, y
+        readed = 0
+        #    从一个文件中读满count条记录为止。文件记录数不够就重复读
+        while (readed <= count):
+            for line in open(fpath, mode='r', encoding='utf-8'):
+                readed += 1
+                if (readed > count): break
+                print('readed:', readed, ' count:', count, ' fpath:', fpath)
+                d = json.loads(line)
+                
+                #    读取图片信息，并且归一化
+                file_name = d['file_name']
+                image = PIL.Image.open(image_dir + "/" + file_name + '.png', mode='r')
+                image = image.resize((conf.IMAGE_WEIGHT, conf.IMAGE_HEIGHT),PIL.Image.ANTIALIAS)
+                x = np.asarray(image, dtype=np.float32)
+                #    x数据做前置处理（归一化在这里做）
+                if (x_preprocess is not None):x = x_preprocess(x)
+                
+                
+                #    读取训练数据信息
+                #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
+                positives = d['positives']
+                if (len(positives) > count_positives): positives = positives[0: count_positives]
+                #    整个拉直成(*, 14)维数组
+                positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
+                #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
+                if (len(positives) < count_positives): positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
+                positives = np.array(positives)
+                
+                #    取负样本，并给每个样本补默认lable，如果不足count_negative，用IoU=-1，其他全0补全
+                negative = d['negative']
+                if (len(negative) > count_negative): negative = negative[0: count_negative]
+                #    整个拉直成(*, 9)维数组
+                negative = [[a[0]] + a[1] for a in negative]
+                #    补label标签
+                negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
+                #    如果不足count_negative，用IoU=-1，其他全0补全
+                if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
+        
+                y = np.vstack((positives, negative))
+                #    y数据过前置处理
+                if (y_preprocess is not None): y = y_preprocess(y)
+                
+                yield x, y
+            pass
         pass
+    
     pass
 
 
 #    rpn网络单独训练数据集
 def rpn_train_db(image_dir=conf.DATASET.get_in_train(), 
+                        count=conf.DATASET.get_count_train(),
                         rois_out=conf.ROIS.get_train_rois_out(), 
                         is_rois_mutiple_file=False,
                         count_positives=conf.RPN.get_train_positives_every_image(),
@@ -445,6 +457,7 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                         y_preprocess=None):
     '''rpn网络单独训练数据集
         @param image_dir: 图片文件目录
+        @param count: 每个文件读取多少条记录，文件数不够会循环此文件直到够数为止
         @param rois_out: rois.jsons文件路径
         @param is_rois_mutiple_file: rois.jsons是否为多文件（多文件会从rois.jsons0开始直到遍历不到文件）
         @param count_positives: 每张图片多少个正样本
@@ -458,7 +471,8 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
     #    训练数据shape和标签数据shape
     x_shape = tf.TensorShape([conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3])
     y_shape = tf.TensorShape(ymaps_shape)
-    db = tf.data.Dataset.from_generator(lambda:read_rois_generator(rois_out=rois_out, 
+    db = tf.data.Dataset.from_generator(lambda:read_rois_generator(count=count,
+                                                                   rois_out=rois_out, 
                                                                    is_rois_mutiple_file=is_rois_mutiple_file,
                                                                    image_dir=image_dir, 
                                                                    count_positives=count_positives,
