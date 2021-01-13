@@ -4,10 +4,9 @@ Created on 2020年12月15日
 
 @author: irenebritney
 '''
-
-
 import yaml
 import os
+import sys
 
 
 #    取项目根目录（其他一切相对目录在此基础上拼接）
@@ -236,4 +235,12 @@ def write_conf(_dict, file_path):
     fw = open(file_path, mode='w', encoding='utf-8')
     yaml.safe_dump(_dict, fw)
     fw.close()
+    pass
+
+
+#    追加sys.path
+def append_sys_path(path):
+    path = convert_to_abspath(path)
+    sys.path.append(path)
+    print(sys.path)
     pass

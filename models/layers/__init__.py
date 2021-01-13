@@ -1,3 +1,2 @@
-import sys
 import utils.conf as conf
-sys.path.append(conf.ROOT_PATH + "/models/layers")
+conf.append_sys_path("models/layers")
