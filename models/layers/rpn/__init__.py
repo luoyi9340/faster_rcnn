@@ -1,7 +1,3 @@
-import utils.conf as conf
-conf.append_sys_path("models/layers/rpn")
-
-
 from models.layers.rpn.models import RPNNet
 
 from models.layers.rpn.losses import RPNLoss

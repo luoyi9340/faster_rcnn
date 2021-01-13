@@ -7,8 +7,8 @@ Created on 2021年1月5日
 '''
 import tensorflow as tf
 
-import models.layers.rpn as rpn
 import utils.logger_factory as logf
+from models.layers.rpn.preprocess import takeout_sample
 
 
 #    分类评价函数
@@ -72,7 +72,7 @@ class RPNMetricCls(tf.keras.metrics.Metric):
                                 (batch_size, h, w, 2, K)代表每个点的x缩放，K的顺序为area * scales
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
-        (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = rpn.takeout_sample(y_true, y_pred)
+        (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = takeout_sample(y_true, y_pred)
         (tp, tn, fp, fn, p, n) = self.tp_tn_fp_tf_p_n(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n)
         
         total = tf.math.add(p, n)
@@ -137,7 +137,7 @@ class RPNMetricReg(tf.keras.metrics.Metric):
                                 (batch_size, h, w, 2, K)代表每个点的x缩放，K的顺序为area * scales
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
-        (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = rpn.takeout_sample(y_true, y_pred)
+        (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = takeout_sample(y_true, y_pred)
         
         mae = self.mean_abs_error(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
         tf.print('mae:', mae, output_stream=logf.get_logger_filepath('rpn_metric'))

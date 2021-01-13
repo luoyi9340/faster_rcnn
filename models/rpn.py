@@ -6,12 +6,16 @@ RPN模型
 Created on 2021年1月5日
 '''
 import tensorflow as tf
-import numpy as np
 
 import models
-import models.layers.rpn as rpn
-import models.layers.resnet as resnet
 import utils.conf as conf
+from models.layers.rpn.models import RPNNet
+from models.layers.rpn.losses import RPNLoss
+from models.layers.rpn.metrics import RPNMetricCls, RPNMetricReg
+from models.layers.rpn.preprocess import takeout_sample, all_positives_from_fmaps
+from models.layers.rpn.nms import nms
+from models.layers.resnet.models import ResNet34, ResNet50
+
 
 
 #    RPN模型
@@ -54,10 +58,10 @@ class RPNModel(models.AModel):
         return tf.optimizers.Adam(learning_rate=learning_rate)
     #    损失函数
     def loss(self):
-        return rpn.RPNLoss(loss_lamda=self.__loss_lamda)
+        return RPNLoss(loss_lamda=self.__loss_lamda)
     #    评价函数
     def metrics(self):
-        return [rpn.RPNMetricCls(), rpn.RPNMetricReg()]
+        return [RPNMetricCls(), RPNMetricReg()]
     #    模型名称
     def model_name(self):
         return self.name + "_" + self.__cnns_name
@@ -67,15 +71,15 @@ class RPNModel(models.AModel):
     def assembling(self, net):
         #    选择CNNsNet
         if (self.__cnns_name == 'resnet34'):
-            self.cnns = resnet.ResNet34(training=self.__train_cnns)
+            self.cnns = ResNet34(training=self.__train_cnns)
             pass
         #    默认resnet50
         else:
-            self.cnns = resnet.ResNet50(training=self.__train_cnns)
+            self.cnns = ResNet50(training=self.__train_cnns)
             pass
         
         #    创建RPNNet
-        self.rpn = rpn.RPNNet(training=self.__train_rpn, input_shape=self.cnns.get_output_shape())
+        self.rpn = RPNNet(training=self.__train_rpn, input_shape=self.cnns.get_output_shape())
         
         #    装配模型
         net.add(self.cnns)
@@ -100,8 +104,8 @@ class RPNModel(models.AModel):
             @return: TP, TN, FP, TN, P, N
         '''
         ymaps = tf.convert_to_tensor(ymaps)
-        (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = rpn.takeout_sample(ymaps, fmaps)
-        return rpn.RPNMetricCls().tp_tn_fp_tf_p_n(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n)
+        (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = takeout_sample(ymaps, fmaps)
+        return RPNMetricCls().tp_tn_fp_tf_p_n(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n)
     #    计算回归的平均绝对误差
     def test_mae(self, fmaps, ymaps):
         '''计算回归的平均绝对误差
@@ -110,8 +114,8 @@ class RPNModel(models.AModel):
             @return: MAE
         '''
         ymaps = tf.convert_to_tensor(ymaps)
-        (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = rpn.takeout_sample(ymaps, fmaps)
-        return rpn.RPNMetricReg().mae(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
+        (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = takeout_sample(ymaps, fmaps)
+        return RPNMetricReg().mae(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
     
     
     #    生成全部建议框
@@ -132,6 +136,6 @@ class RPNModel(models.AModel):
             @requires: numpy(num, [])
         '''
         #    取fmaps中生成的所有被判定为前景的anchor
-        anchors = rpn.all_positives_from_fmaps(fmaps, threshold=threshold_prob, K=K)
-        return rpn.nms(anchors, threshold=threshold_iou, roi_areas=roi_areas, roi_scales=roi_scales)
+        anchors = all_positives_from_fmaps(fmaps, threshold=threshold_prob, K=K)
+        return nms(anchors, threshold=threshold_iou, roi_areas=roi_areas, roi_scales=roi_scales)
     pass

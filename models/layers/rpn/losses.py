@@ -10,8 +10,7 @@ import tensorflow as tf
 import utils.conf as conf
 import utils.math_expand as me
 import utils.logger_factory as logf
-import models.layers.rpn as rpn
-
+from models.layers.rpn.preprocess import takeout_sample
 
 #    RPN网络的损失
 class RPNLoss(tf.keras.losses.Loss):
@@ -64,7 +63,7 @@ class RPNLoss(tf.keras.losses.Loss):
                                 (batch_size, h, w, 2, K)代表每个点的x缩放，K的顺序为area * scales
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
-        (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p) = rpn.takeout_sample(y_true, y_pred)
+        (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p) = takeout_sample(y_true, y_pred)
         loss = self.loss_cls(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n) \
                         + self.__loss_lamda * self.loss_reg(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
         return loss
