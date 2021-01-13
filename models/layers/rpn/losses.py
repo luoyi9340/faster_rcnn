@@ -97,6 +97,7 @@ class RPNLoss(tf.keras.losses.Loss):
         
         loss_cls = loss_cls_p + loss_cls_n
         
+        tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('rpn_loss'))
         tf.print('loss_cls_p:', loss_cls_p, ' loss_cls_p_sum:', loss_cls_p_sum, ' count_p:', count_p, output_stream=logf.get_logger_filepath('rpn_loss'))
         tf.print('loss_cls_n:', loss_cls_n, ' loss_cls_n_sum:', loss_cls_n_sum, ' count_n:', count_n, output_stream=logf.get_logger_filepath('rpn_loss'))
         return loss_cls
