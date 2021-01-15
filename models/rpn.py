@@ -133,9 +133,10 @@ class RPNModel(models.AModel):
             @param K: 特征图中每个像素点对应多少个anchor(roi_areas * roi_scales的组合)
             @param roi_areas: anchor面积比划分(1:1时的长宽值)
             @param roi_scales: anchor长宽比划分
-            @requires: numpy(num, [])
+            @return: [numpy(num, 6)...] 
+                            [正样本概率, xl,yl(左上点), xr,yr(右下点), 区域面积]
         '''
         #    取fmaps中生成的所有被判定为前景的anchor
-        anchors = all_positives_from_fmaps(fmaps, threshold=threshold_prob, K=K)
-        return nms(anchors, threshold=threshold_iou, roi_areas=roi_areas, roi_scales=roi_scales)
+        anchors = all_positives_from_fmaps(fmaps, threshold=threshold_prob, K=K, roi_areas=roi_areas, roi_scales=roi_scales)
+        return nms(anchors, threshold=threshold_iou)
     pass

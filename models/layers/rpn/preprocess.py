@@ -133,28 +133,36 @@ def takeout_sample(ytrue_maps, feature_maps):
 #    从fmaps拿全部判定为正样本的anchor
 def all_positives_from_fmaps(fmaps, 
                              threshold=conf.RPN.get_nms_threshold_positives(), 
-                             K=conf.RPN.get_K()):
+                             K=conf.RPN.get_K(),
+                             feature_map_scaling=conf.CNNS.get_feature_map_scaling(),
+                             roi_areas=conf.RPN.get_roi_areas(),
+                             roi_scales=conf.RPN.get_roi_scales()):
     '''从fmaps拿全部判定为正样本的anchor
         @param fmaps: numpy(num, H, W, 6, K) RPNModel拿到的特征图
         @param threshold: 判定正样本的阈值。(num, H, W, 0, K) > 此值判定为正样本
-        @return: (num, 8)
-                    (num, 0)     判定正样本的概率
-                    (num, 1~4)   d[x], d[y], d[w], d[h]
-                    (num, 5~7)   idx_h(相对于特征图)，idx_w(相对于特征图)，idx_anchor(K的idx)
+        @param feature_map_scaling: 特征图缩放比例
+        @param roi_areas: anchor面积比
+        @param roi_scales: anchor宽高比
+        @return: [narray(num, 5)]      numpy数组
+                    [正样本概率, xl,yl, xr,yr, ]
     '''
     B, H, W = fmaps.shape[0], fmaps.shape[1], fmaps.shape[2]
+    roi_areas = np.array(roi_areas)
+    roi_scales = np.array(roi_scales)
     
     [fmaps_p, _, fmaps_reg] = np.split(fmaps, [1,2], axis=3)
     fmaps_p[fmaps_p <= threshold] = 0
     
+    #    把正样本概率<阈值的reg清零
     tmp = np.zeros_like(fmaps_p)
     tmp[fmaps_p > 0.5] = 1
-    tmp = np.repeat(tmp, K, axis=3)
+    tmp = np.repeat(tmp, 4, axis=3)
     fmaps_reg = tmp * fmaps_reg
     
     fmaps = np.concatenate([fmaps_p, fmaps_reg], axis=3)            #    a.shape=(batch_size, h, w, 5, K)。a[b,h,w]的每列代表一个anchor，每列数据为[prob, d[x], d[y], d[w], d[h]]
     fmaps = np.transpose(fmaps, axes=(0,1,2, 4,3))                  #    a.shape=(batch_size, h, w, K, 5)。a[b,h,w]的每行代表一个anchor，每行数据为[prob, d[x], d[y], d[w], d[h]]
-    #    给a的每行追加h[0,H), w[0,W), anchor[0,K)索引。扩充后a.shape=(2,2,2, 4, 8)。a[b,h,w]每行数据为[prob, d[x], d[y], d[w], d[h], idx_h, idx_w, idx_anchor]
+    
+    #    给a的每行追加h[0,H), w[0,W), anchor[0,K)索引。扩充后a.shape=(batch_size, h, w, K, 8)。a[b,h,w]每行数据为[prob, d[x], d[y], d[w], d[h], idx_h, idx_w, idx_anchor]
     idx_anchor = np.arange(K)                                       #    得到单位anchor索引shape=(K)
     idx_anchor = np.concatenate([idx_anchor for _ in range(H*W)])
     idx_anchor = np.reshape(idx_anchor, newshape=(len(idx_anchor), 1))
@@ -167,8 +175,39 @@ def all_positives_from_fmaps(fmaps,
     idx = np.concatenate([idx, idx_anchor], axis=1)
     idx = np.reshape(idx, newshape=(H, W, K, 3))
     idx = np.repeat(np.expand_dims(idx, axis=0), B, axis=0)
-    fmaps = np.concatenate([idx_anchor, idx], axis=4)               #    追加索引, fmaps.shape(batch_size, h, w, K, 8)
+    fmaps = np.concatenate([fmaps, idx], axis=4)                    #    追加索引, fmaps.shape(batch_size, h, w, K, 8)
     
-    #    过滤掉概率为0的
-    fmaps = fmaps[fmaps[:,:,:,:,0] > threshold]                     #    fmaps.shape=(num, 8)
-    return fmaps
+    #    根据idx_h,idx_w(相对于特征图), idx_anchor 和 d[x],d[y],d[w],d[h] 换算出原图坐标
+    #    特征图每个像素点对应原图中心点坐标 = (特征图坐标x * 缩放比例 + 缩放比例/2, 特征图坐标y * 缩放比例 + 缩放比例/2)
+    xc, yc = fmaps[:, :,:, :, 6] * feature_map_scaling + feature_map_scaling/2, fmaps[:, :,:, :, 5] * feature_map_scaling + feature_map_scaling/2
+    #    根据idx_anchor计算每个anchor的宽高
+    idx_areas = (fmaps[:, :,:, :, 7] / len(roi_scales)).astype(np.int8)
+    idx_scales = (fmaps[:, :,:, :, 7] % len(roi_scales)).astype(np.int8)
+    w = np.round(roi_areas[idx_areas] * roi_scales[idx_scales])
+    h = np.round(roi_areas[idx_areas] / roi_scales[idx_scales])
+    #    根据d[x], d[y], d[w], d[h]换算中心坐标和宽高
+#     xc = fmaps[:, :,:, :, 1] / w + xc                               #    G_[x] = d[x]/P[w] + P[x]
+#     yc = fmaps[:, :,:, :, 2] / h + yc                               #    G_[y] = d[y]/P[h] + P[y]
+#     w = np.exp(fmaps[:, :,:, :, 3]) * w                             #    G_[w] = exp(d[w]) * P[w]
+#     h = np.exp(fmaps[:, :,:, :, 4]) * h                             #    G_[h] = exp(d[h]) * P[h]
+    xl, yl = (xc - w/2).astype(np.int16), (yc - h/2).astype(np.int16)                                     #    左上点坐标 = (xc - w/2, yc - h/2)
+    xr, yr = (xc + w/2).astype(np.int16), (yc + h/2).astype(np.int16)                                     #    右下点坐标 = (xc + w/2, yc + h/2)
+    #    拼接后anchors.shape=(batch_size, h, w, k, 5)
+    anchors = np.concatenate([np.expand_dims(fmaps[:, :,:, :, 0], axis=-1), 
+                              np.expand_dims(xl, axis=-1), 
+                              np.expand_dims(yl, axis=-1), 
+                              np.expand_dims(xr, axis=-1), 
+                              np.expand_dims(yr, axis=-1)], axis=-1).astype(np.float32)
+    
+    #    过滤掉0>xl>IMAGE_WEIGHT, 0>yl>IMAGE_HEIGHT, 0>xr>IMAGE)WEIGHT, 0>yr>IMAGE_WEIGHT的部分（将概率置为-1，下面会统一过滤掉）
+    anchors[(anchors[:, :,:, :, 1] < 0) + (anchors[:, :,:, :, 1] > conf.IMAGE_WEIGHT)] = [-1, 0,0,0,0]
+    anchors[(anchors[:, :,:, :, 2] < 0) + (anchors[:, :,:, :, 2] > conf.IMAGE_HEIGHT)] = [-1, 0,0,0,0]
+    anchors[(anchors[:, :,:, :, 3] < 0) + (anchors[:, :,:, :, 3] > conf.IMAGE_WEIGHT)] = [-1, 0,0,0,0]
+    anchors[(anchors[:, :,:, :, 4] < 0) + (anchors[:, :,:, :, 4] > conf.IMAGE_HEIGHT)] = [-1, 0,0,0,0]
+    #    过滤掉概率小于阈值的。每张图片的候选框数量是不一样的，所以不能组成一个narray对象
+    idxs = anchors[:, :,:, :, 0] >= threshold
+    res = []
+    for fmap, idx in zip(anchors, idxs):
+        res.append(fmap[idx])
+        pass
+    return res

@@ -93,20 +93,7 @@ class RoisCreator():
             @param log_interval: 每多少条记录打一次log
             @param label_mutiple: label是否为多文件（多文件则文件名从*.jsons0开始一直往后，直到读不到为止）
         '''
-        label_files = []
-        #    如果是单文件则写入单文件
-        if (not label_mutiple):
-            label_files.append(label_file_path)
-            return self.__create_from_file(label_file_path, count, rois_out, log_interval)
-        #    多文件时先找到所有的文件名
-        else:
-            idx = 0
-            while (os.path.exists(label_file_path + str(idx))):
-                fpath = label_file_path + str(idx)
-                label_files.append(fpath)
-                idx += 1
-                pass
-            pass
+        label_files = ds.get_fpaths(label_mutiple=label_mutiple, file_path=label_file_path)
         
         #    遍历文件，用单文件或线程池的方式跑
         num_labels, num_positives, num_negative = 0, 0, 0
@@ -359,7 +346,7 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                         image_dir=conf.DATASET.get_in_train(), 
                         count_positives=conf.RPN.get_train_positives_every_image(),
                         count_negative=conf.RPN.get_train_negative_every_image(),
-                        x_preprocess=lambda x:((x / 255.) - 0.5 )/ 2, 
+                        x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
                         y_preprocess=None):
     '''rpn网络单独训练数据集生成器
         x: 180*480*3 图片像素
@@ -378,20 +365,7 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
         @param x_preprocess: x数据预处理（默认归到-1 ~ 1之间）
         @param y_preprocess: y数据预处理
     '''
-    label_files = []
-    #    单文件模式rois_out就是rois标签文件
-    if (not is_rois_mutiple_file):
-        label_files.append(rois_out)
-        pass
-    #    多文件模式从rois.jsons0开始rois.jsons1，rois.jsons2一直往上遍历，直到遍历不到为止
-    else:
-        idx = 0
-        while (os.path.exists(rois_out + str(idx))):
-            filepath = rois_out + str(idx)
-            label_files.append(filepath)
-            idx += 1
-            pass
-        pass
+    label_files = ds.get_fpaths(is_rois_mutiple_file, rois_out)
     
     #    遍历所有文件和所有行
     for fpath in label_files:
@@ -461,14 +435,13 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                         y_preprocess=None):
     '''rpn网络单独训练数据集
         @param image_dir: 图片文件目录
-        @param count: 每个文件读取多少条记录，文件数不够会循环此文件直到够数为止
+        @param count: 每个文件读取多少条记录，文件中记录数不够会循环此文件直到够数为止
         @param rois_out: rois.jsons文件路径
         @param is_rois_mutiple_file: rois.jsons是否为多文件（多文件会从rois.jsons0开始直到遍历不到文件）
         @param count_positives: 每张图片多少个正样本
         @param count_negative: 每张图片多少个负样本
         @param batch_size: 数据集的batch_size
         @param ymaps_shape: 特征图尺寸（参照one_hot做法会把label数据提前做成特征图的尺寸给到模型）
-        @param count: 数据总量
         @param x_preprocess: 训练数据预处理
         @param y_preprocess: 标签数据预处理（做成特征图尺寸就是在这里做的. 参考:rpn.preprocess.preprocess_like_fmaps）
     '''
@@ -506,3 +479,5 @@ def total_sample(rois_out, is_rois_mutiple_file=False, count=100):
         fcount += 1
         pass
     return fcount * count
+
+

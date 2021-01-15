@@ -105,8 +105,9 @@ class ResNet34(tf.keras.layers.Layer):
         filters_layer1 = base_channel_num * 1
         if (self.__num_layer >= 1):
             self.__layer1 = tf.keras.models.Sequential([
-                    tf.keras.layers.ZeroPadding2D(1),
-                    tf.keras.layers.Conv2D(name=self.name + '_layer1_conv1', filters=filters_layer1, kernel_size=(3, 3), strides=2, padding='valid', input_shape=(180, 480, 3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
+                    #    坑，padding放在入口处load_weights会出错。。。
+#                     tf.keras.layers.ZeroPadding2D(1),
+                    tf.keras.layers.Conv2D(name=self.name + '_layer1_conv1', filters=filters_layer1, kernel_size=(3, 3), strides=2, padding='valid', input_shape=(182, 482, 3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
                     tf.keras.layers.BatchNormalization(name=self.name + '_BN1', trainable=self.__training),
                     tf.keras.layers.ReLU(name=self.name + '_ReLU1')
                 ], name=self.name + '_layer1')
@@ -164,6 +165,9 @@ class ResNet34(tf.keras.layers.Layer):
     
     #    前向传播
     def call(self, x, training=None, mask=None):
+        #    ZeroPadding放在入口处load_weights会出错，第一个padding只能放在这。。。
+        x = tf.pad(x, paddings=[[0,0], [1,1], [1,1], [0,0]])
+        
         if (self.__num_layer >= 1):
             y = self.__layer1(x, training=training, mask=mask)
         
@@ -179,8 +183,8 @@ class ResNet34(tf.keras.layers.Layer):
         if (self.__num_layer >= 5):
             y = self.__layer5(y, training=training, mask=mask)
         
-        #    检测输出的y与缩放比例是否一致
-        x_h, x_w = x.shape[1], x.shape[2]
+        #    检测输出的y与缩放比例是否一致(减掉padding的2)
+        x_h, x_w = x.shape[1]-2, x.shape[2]-2
         y_h, y_w = y.shape[1], y.shape[2]
         if (math.ceil(x_w / self.__scaling) != int(y_w)
             or math.ceil(x_h / self.__scaling) != int(y_h)):

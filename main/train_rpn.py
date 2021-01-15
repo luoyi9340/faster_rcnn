@@ -38,14 +38,15 @@ log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(),
 #    单epoch数据总数
 total_sample_train = rois.total_sample(is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
                                        count=conf.DATASET.get_count_train(), 
-                                       rois_out=conf.DATASET.get_label_train())
+                                       rois_out=conf.ROIS.get_train_rois_out())
 batch_size = conf.RPN.get_train_batch_size()
 epochs = conf.RPN.get_train_epochs()
 
 
 log.info('training RPNModel begin...')
 #    准备数据集
-db_train = rois.rpn_train_db(image_dir=conf.DATASET.get_in_train(), 
+db_train = rois.rpn_train_db(count=conf.DATASET.get_count_train(),
+                             image_dir=conf.DATASET.get_in_train(), 
                              rois_out=conf.ROIS.get_train_rois_out(), 
                              is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(),
                              count_positives=conf.RPN.get_train_positives_every_image(),
@@ -60,7 +61,8 @@ log.info('db_train rois count_positives:%d count_negative:%d batch_size:%d', con
 log.info('db_train:{}'.format(db_train))
 
 
-db_val = rois.rpn_train_db(image_dir=conf.DATASET.get_in_val(), 
+db_val = rois.rpn_train_db(count=conf.DATASET.get_count_val(),
+                           image_dir=conf.DATASET.get_in_val(), 
                            rois_out=conf.ROIS.get_val_rois_out(), 
                            is_rois_mutiple_file=conf.DATASET.get_label_val_mutiple(),
                            count_positives=conf.RPN.get_train_positives_every_image(),
@@ -90,6 +92,7 @@ rpn_model.train_tensor_db(db_train, db_val,
                           auto_tensorboard=True, 
                           auto_tensorboard_dir=conf.RPN.get_tensorboard_dir())
 
+rpn_model.save_model_weights(conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5')
 
 log.info('training RPNModel finished...')
 
