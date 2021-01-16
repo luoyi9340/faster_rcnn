@@ -88,7 +88,16 @@ rpn:
 cnns:
    #   cnns层缩放比例（特征图相对原图缩放比例。相比原生CNN，我的数据集图比较小，特征图再缩到很小就没什么点来生成anchors了）
    feature_map_scaling: 8
+   #   第一层通道数，后面的各层通道数在此基础上扩展
+   base_channel_num: 32
    
-   
+
+
+#   环境相关
+context:
+   #   当前环境名称[dev | test | online]。就是给人看一下，其实没卵子用。。。
+   name: dev
+   #   是否执行后续动作
+   is_after_operation: false
    
 

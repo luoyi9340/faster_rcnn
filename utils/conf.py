@@ -59,9 +59,13 @@ def load_conf_yaml():
               c['rpn']['nms_threshold_positives'],
               c['rpn']['nms_threshold_iou'])
     
-    cnns = CNNs(c['cnns']['feature_map_scaling'])
+    cnns = CNNs(c['cnns']['feature_map_scaling'],
+                c['cnns']['base_channel_num'])
     
-    return c, dataset, rois, rpn, cnns
+    context = Context(c['context']['name'],
+                      c['context']['is_after_operation'])
+    
+    return c, dataset, rois, rpn, cnns, context
 
 #    验证码识别数据集。为了与Java的风格保持一致
 class Dataset:
@@ -179,10 +183,23 @@ class Rois():
 
 #    CNNs相关配置
 class CNNs():
-    def __init__(self, feature_map_scaling=8):
+    def __init__(self, feature_map_scaling=8, base_channel_num=32):
         self.__feature_map_scaling = feature_map_scaling
+        self.__base_channel_num = base_channel_num
         pass
     def get_feature_map_scaling(self): return self.__feature_map_scaling
+    def get_base_channel_num(self): return self.__base_channel_num
+    pass
+
+#    环境相关配置
+class Context():
+    def __init__(self, name='dev', 
+                 is_after_operation=False):
+        self.__name = name
+        self.__is_after_operation = is_after_operation
+        pass
+    def get_name(self): return self.__name
+    def get_is_after_operation(self): return self.__is_after_operation
     pass
 
 
@@ -215,7 +232,7 @@ def mkdir_ifnot_exises(_dir):
         os.makedirs(_dir)
     pass
 
-ALL_DICT, DATASET, ROIS, RPN, CNNS = load_conf_yaml()
+ALL_DICT, DATASET, ROIS, RPN, CNNS, CONTEXT = load_conf_yaml()
 
 
 #    写入配置文件

@@ -11,6 +11,7 @@ import tensorflow as tf
 import numpy as np
 
 import utils.conf as conf
+# from utils.tf_expand import AdjustLRWithBatchCallback
 
 
 #    模型类的公共行为
@@ -214,6 +215,8 @@ class AModel(metaclass=abc.ABCMeta):
             pass
         #    如果需要在训练期间动态调整学习率
         if (auto_learning_rate_schedule):
+#             lrCallback = AdjustLRWithBatchCallback(n_batch=200, m_batch=400)
+#             callbacks.append(lrCallback)
             reduce_lr_on_plateau = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
                                                                         factor=0.1,             #    每次减少学习率的因子，学习率将以lr = lr*factor的形式被减少
                                                                         patience=1,             #    当patience个epoch过去而模型性能不提升时，学习率减少的动作会被触发

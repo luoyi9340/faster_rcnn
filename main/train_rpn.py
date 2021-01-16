@@ -92,7 +92,8 @@ rpn_model.train_tensor_db(db_train, db_val,
                           auto_tensorboard=True, 
                           auto_tensorboard_dir=conf.RPN.get_tensorboard_dir())
 
-rpn_model.save_model_weights(conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5')
+#rpn_model.save_model_weights(conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5')
 
 log.info('training RPNModel finished...')
+
 

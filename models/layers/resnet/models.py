@@ -75,7 +75,7 @@ class ResNet34(tf.keras.layers.Layer):
         没了，就这么直接输出给外面的网络
         
     '''
-    def __init__(self, training=True, scaling=CNNS.get_feature_map_scaling(), base_channel_num=32, kernel_initializer = tf.initializers.he_normal(), bias_initializer = tf.initializers.Zeros(), **kwargs):
+    def __init__(self, training=True, scaling=CNNS.get_feature_map_scaling(), base_channel_num=CNNS.get_base_channel_num(), kernel_initializer = tf.initializers.he_normal(), bias_initializer = tf.initializers.Zeros(), **kwargs):
         '''
             @param training: 网络是否参与训练
             @param scaling: 特征图缩放比例
@@ -276,7 +276,7 @@ class ResNet50(tf.keras.layers.Layer):
         -----------------layer 2-------------------
         没了，就这么直接输出给外面的网络
     '''
-    def __init__(self, training=True, scaling=CNNS.get_feature_map_scaling(), base_channel_num=32, kernel_initializer = tf.initializers.he_normal(), bias_initializer = tf.initializers.Zeros(), **kwargs):
+    def __init__(self, training=True, scaling=CNNS.get_feature_map_scaling(), base_channel_num=CNNS.get_base_channel_num(), kernel_initializer = tf.initializers.he_normal(), bias_initializer = tf.initializers.Zeros(), **kwargs):
         '''
             @param training: 网络是否参与训练
             @param scaling: 特征图缩放比例
