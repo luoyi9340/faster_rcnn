@@ -202,6 +202,11 @@ class RoisCreator():
             positives += arr
             pass
         
+        #    限制负样本的数量（负样本太多了），预留4倍的数量，以后配置用
+        if (len(negative) > conf.RPN.get_train_negative_every_image() * 4):
+            negative = negative[:conf.RPN.get_train_negative_every_image() * 4]
+            pass
+        
         j['positives'] = positives
         j['negative'] = negative
         
@@ -403,9 +408,11 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 negative = [[a[0]] + a[1] for a in negative]
                 #    补label标签
                 negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
+                negative = negative.tolist()
                 #    如果不足count_negative，用IoU=-1，其他全0补全
                 if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
-        
+                negative = np.array(negative)
+                
                 y = np.vstack((positives, negative))
                 #    y数据过前置处理
                 if (y_preprocess is not None): y = y_preprocess(y)
