@@ -428,7 +428,7 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                         count_negative=conf.RPN.get_train_negative_every_image(),
                         batch_size=conf.RPN.get_train_batch_size(), 
                         ymaps_shape=(12, 30, 6, 15),
-                        x_preprocess=None, 
+                        x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
                         y_preprocess=None):
     '''rpn网络单独训练数据集
         @param image_dir: 图片文件目录

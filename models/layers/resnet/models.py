@@ -23,7 +23,7 @@ class ResNet34(tf.keras.layers.Layer):
         -----------------layer 1-------------------
         Conv:
             kernel_size=[3*3* base_channel_num] stride=2 padding=1 active=relu norm=bn
-            out=[90 * 240 * base_channel_num]
+            out=[90 * 240 * base_channel_num * 2]
             此时缩放比例为：2
         ======================= 2层 =======================
         -----------------BasicBlock 1*3-------------------
@@ -102,7 +102,7 @@ class ResNet34(tf.keras.layers.Layer):
     #    装配网络
     def __assembling(self, base_channel_num):
         #    第1层
-        filters_layer1 = base_channel_num * 1
+        filters_layer1 = base_channel_num * 2
         if (self.__num_layer >= 1):
             self.__layer1 = tf.keras.models.Sequential([
                     #    坑，padding放在入口处load_weights会出错。。。
