@@ -23,9 +23,9 @@ IMAGE_WEIGHT = 4 * IMAGE_BASE_WEIGHT
 #    取配置文件目录
 CONF_PATH = ROOT_PATH + "/resources/conf.yml"
 #    加载conf.yml配置文件
-def load_conf_yaml():
+def load_conf_yaml(yaml_path=CONF_PATH):
     print('加载配置文件:' + CONF_PATH)
-    f = open(CONF_PATH, 'r', encoding='utf-8')
+    f = open(yaml_path, 'r', encoding='utf-8')
     fr = f.read()
     
 #     c = yaml.load(fr, Loader=yaml.SafeLoader)
@@ -66,6 +66,7 @@ def load_conf_yaml():
                       c['context']['is_after_operation'])
     
     return c, dataset, rois, rpn, cnns, context
+
 
 #    验证码识别数据集。为了与Java的风格保持一致
 class Dataset:

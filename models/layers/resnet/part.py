@@ -75,8 +75,9 @@ class BasicBlock(tf.keras.layers.Layer):
         y = tf.keras.layers.add([X, y])
         
         #    如果定义了output_shape，则检测输出是否一致
+        y_shape = (y.shape[1], y.shape[2], y.shape[3])
         if (self.__output_shape is not None
-            and self.__output_shape != tuple(filter(None, y.shape))):
+            and self.__output_shape != tuple(filter(None, y_shape))):
                 raise Exception(self.name + "outputshape:" + str(self.__output_shape) + " not equal y:" + str(y.shape))
         
         return tf.nn.relu(y)
@@ -140,8 +141,9 @@ class Bottleneck(tf.keras.layers.Layer):
         y = tf.keras.layers.add([X, y])
         
         #    如果定义了output_shape，则检测输出是否一致
+        y_shape = (y.shape[1], y.shape[2], y.shape[3])
         if (self.__output_shape is not None
-            and self.__output_shape != tuple(filter(None, y.shape))):
+            and self.__output_shape != tuple(filter(None, y_shape))):
                 raise Exception(self.name + "outputshape:" + str(self.__output_shape) + " not equal y:" + str(y.shape))
         
         return tf.nn.relu(y)

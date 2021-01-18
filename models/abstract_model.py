@@ -116,7 +116,8 @@ class AModel(metaclass=abc.ABCMeta):
         #    初始化模型的各种回调
         callbacks = self.callbacks(auto_save_weights_after_traind, auto_save_weights_dir, 
                                    auto_learning_rate_schedule, 
-                                   auto_tensorboard, auto_tensorboard_dir)
+                                   auto_tensorboard, auto_tensorboard_dir,
+                                   batch_size=batch_size)
         
         #    设置数据集重复读几次
         db_train = db_train.repeat(epochs)

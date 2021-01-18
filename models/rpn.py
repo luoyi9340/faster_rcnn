@@ -12,7 +12,7 @@ import utils.conf as conf
 from models.layers.rpn.models import RPNNet
 from models.layers.rpn.losses import RPNLoss
 from models.layers.rpn.metrics import RPNMetricCls, RPNMetricReg
-from models.layers.rpn.preprocess import takeout_sample, all_positives_from_fmaps
+from models.layers.rpn.preprocess import takeout_sample_np, all_positives_from_fmaps
 from models.layers.rpn.nms import nms
 from models.layers.resnet.models import ResNet34, ResNet50
 
@@ -23,6 +23,8 @@ class RPNModel(models.AModel):
     def __init__(self, cnns_name=conf.RPN.get_cnns(), 
                         learning_rate=conf.RPN.get_train_learning_rate(),
                         scaling=conf.CNNS.get_feature_map_scaling(), 
+                        K=conf.RPN.get_K(),
+                        cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
                         train_cnns=True,
                         train_rpn=True,
                         loss_lamda=10,
@@ -36,6 +38,8 @@ class RPNModel(models.AModel):
             @param train_rpn: rpn层是否参与训练
         '''
         self.__scaling = scaling
+        self.__K = K
+        self.__cnns_base_channel_num = cnns_base_channel_num
         
         self.__cnns_name = cnns_name
         self.cnns = None
@@ -71,15 +75,15 @@ class RPNModel(models.AModel):
     def assembling(self, net):
         #    选择CNNsNet
         if (self.__cnns_name == 'resnet34'):
-            self.cnns = ResNet34(training=self.__train_cnns)
+            self.cnns = ResNet34(training=self.__train_cnns, scaling=self.__scaling, base_channel_num=self.__cnns_base_channel_num)
             pass
         #    默认resnet50
         else:
-            self.cnns = ResNet50(training=self.__train_cnns)
+            self.cnns = ResNet50(training=self.__train_cnns, scaling=self.__scaling, base_channel_num=self.__cnns_base_channel_num)
             pass
         
         #    创建RPNNet
-        self.rpn = RPNNet(training=self.__train_rpn, input_shape=self.cnns.get_output_shape())
+        self.rpn = RPNNet(training=self.__train_rpn, input_shape=self.cnns.get_output_shape(), K=self.__K, loss_lamda=self.__loss_lamda)
         
         #    装配模型
         net.add(self.cnns)
@@ -103,19 +107,22 @@ class RPNModel(models.AModel):
             @param ymaps: Numpy(num, h, w, 6, K) 与fmaps对应的标签特征图
             @return: TP, TN, FP, TN, P, N
         '''
-        ymaps = tf.convert_to_tensor(ymaps)
-        (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = takeout_sample(ymaps, fmaps)
-        return RPNMetricCls().tp_tn_fp_tf_p_n(ymaps_cls_p, fmaps_cls_p, ymaps_cls_n, fmaps_cls_n)
+        (fmaps_cls_p, fmaps_cls_n, _), (ymaps_cls_p, ymaps_cls_n, _) = takeout_sample_np(ymaps, fmaps)
+        return RPNMetricCls().tp_tn_fp_tf_p_n(tf.convert_to_tensor(ymaps_cls_p, dtype=tf.float32), 
+                                              tf.convert_to_tensor(fmaps_cls_p, dtype=tf.float32), 
+                                              tf.convert_to_tensor(ymaps_cls_n, dtype=tf.float32), 
+                                              tf.convert_to_tensor(fmaps_cls_n, dtype=tf.float32))
     #    计算回归的平均绝对误差
-    def test_mae(self, fmaps, ymaps):
+    def test_reg(self, fmaps, ymaps):
         '''计算回归的平均绝对误差
             @param fmaps: Tensor(num, h, w, 6, K) test函数返回的特征图
             @param ymaps: Numpy(num, h, w, 6, K) 与fmaps对应的标签特征图
             @return: MAE
         '''
-        ymaps = tf.convert_to_tensor(ymaps)
-        (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = takeout_sample(ymaps, fmaps)
-        return RPNMetricReg().mae(ymaps_reg_p, fmaps_reg_p, ymaps_cls_p)
+        (_, _, fmaps_reg_p), (ymaps_cls_p, _, ymaps_reg_p) = takeout_sample_np(ymaps, fmaps)
+        return RPNMetricReg().mean_abs_error(tf.convert_to_tensor(ymaps_reg_p, dtype=tf.float32), 
+                                             tf.convert_to_tensor(fmaps_reg_p, dtype=tf.float32), 
+                                             tf.convert_to_tensor(ymaps_cls_p, dtype=tf.float32))
     
     
     #    生成全部建议框

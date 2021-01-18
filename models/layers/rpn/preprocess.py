@@ -128,6 +128,36 @@ def takeout_sample(ytrue_maps, feature_maps):
     ymaps_reg_p = tf.where(ytrue_maps_reg > 0, ytrue_maps_reg, zeros_tmp_reg)
     
     return (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p)
+#    通过ytrue_maps取分类的正负样本/回归的正样本
+def takeout_sample_np(ytrue_maps, feature_maps):
+    '''通过ytrue_maps从feature_maps中取分类的正负样本，回归的正样本
+            ytrue_maps中分类的正样本=1，负样本=-1
+            ytrue_maps中回归的正样本>0，没有负样本
+            其余都是0
+        @param ytrue_maps: 通过preprocess_like_fmaps生成的与feature_maps形状一致的特征图。外面加上batch_size维度
+                                (batch_size, h, w, 6, K)
+        @param feature_maps: cnns + rpn输出的特征图
+                                (batch_size, h, w, 6, K)
+        return (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p)
+                    (分类正样本的特征图(batch_size, h, w, 2, K)，
+                     分类负样本的特征图(batch_size, h, w, 2, K)，
+                     回归正样本的特征图(batch_size, h, w, 4, K))
+    '''
+    #    从6=2+4中切分出分类 / 回归的特征图
+    [ytrue_maps_cls, ytrue_maps_reg] = np.split(ytrue_maps, [2], axis=3)
+    [fmaps_cls, fmaps_reg] = np.split(feature_maps, [2], axis=3)
+    
+    zeros_tmp_cls = np.zeros_like(ytrue_maps_cls)
+    zeros_tmp_reg = np.zeros_like(ytrue_maps_reg)
+    #    按照cls中正样本=1，负样本=-1，reg中正样本>0，没有负样本的规则摘出感兴趣的样本
+    fmaps_cls_p = np.where(ytrue_maps_cls > 0, fmaps_cls, zeros_tmp_cls)
+    fmaps_cls_n = np.where(ytrue_maps_cls < 0, fmaps_cls, zeros_tmp_cls)
+    fmaps_reg_p = np.where(ytrue_maps_reg > 0, fmaps_reg, zeros_tmp_reg)  
+    ymaps_cls_p = np.where(ytrue_maps_cls > 0, ytrue_maps_cls, zeros_tmp_cls)
+    ymaps_cls_n = np.where(ytrue_maps_cls < 0, ytrue_maps_cls, zeros_tmp_cls)
+    ymaps_reg_p = np.where(ytrue_maps_reg > 0, ytrue_maps_reg, zeros_tmp_reg)
+    
+    return (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p)
 
 
 #    从fmaps拿全部判定为正样本的anchor
@@ -179,17 +209,18 @@ def all_positives_from_fmaps(fmaps,
     
     #    根据idx_h,idx_w(相对于特征图), idx_anchor 和 d[x],d[y],d[w],d[h] 换算出原图坐标
     #    特征图每个像素点对应原图中心点坐标 = (特征图坐标x * 缩放比例 + 缩放比例/2, 特征图坐标y * 缩放比例 + 缩放比例/2)
-    xc, yc = fmaps[:, :,:, :, 6] * feature_map_scaling + feature_map_scaling/2, fmaps[:, :,:, :, 5] * feature_map_scaling + feature_map_scaling/2
+    
+    xc, yc = fmaps[:, :,:, :, 6] * feature_map_scaling + feature_map_scaling/2, fmaps[:, :,:, :, 5].astype(np.int8) * feature_map_scaling + feature_map_scaling/2
     #    根据idx_anchor计算每个anchor的宽高
     idx_areas = (fmaps[:, :,:, :, 7] / len(roi_scales)).astype(np.int8)
     idx_scales = (fmaps[:, :,:, :, 7] % len(roi_scales)).astype(np.int8)
-    w = np.round(roi_areas[idx_areas] * roi_scales[idx_scales])
-    h = np.round(roi_areas[idx_areas] / roi_scales[idx_scales])
+    w = np.round(roi_areas[idx_areas] * roi_scales[idx_scales]).astype(np.float64)
+    h = np.round(roi_areas[idx_areas] / roi_scales[idx_scales]).astype(np.float64)
     #    根据d[x], d[y], d[w], d[h]换算中心坐标和宽高
-#     xc = fmaps[:, :,:, :, 1] / w + xc                               #    G_[x] = d[x]/P[w] + P[x]
-#     yc = fmaps[:, :,:, :, 2] / h + yc                               #    G_[y] = d[y]/P[h] + P[y]
-#     w = np.exp(fmaps[:, :,:, :, 3]) * w                             #    G_[w] = exp(d[w]) * P[w]
-#     h = np.exp(fmaps[:, :,:, :, 4]) * h                             #    G_[h] = exp(d[h]) * P[h]
+    xc = fmaps[:, :,:, :, 1] / w + xc                               #    G_[x] = d[x]/P[w] + P[x]
+    yc = fmaps[:, :,:, :, 2] / h + yc                               #    G_[y] = d[y]/P[h] + P[y]
+    w = np.exp(fmaps[:, :,:, :, 3]).astype(np.float64) * w                             #    G_[w] = exp(d[w]) * P[w]
+    h = np.exp(fmaps[:, :,:, :, 4]).astype(np.float64) * h                             #    G_[h] = exp(d[h]) * P[h]
     xl, yl = (xc - w/2).astype(np.int16), (yc - h/2).astype(np.int16)                                     #    左上点坐标 = (xc - w/2, yc - h/2)
     xr, yr = (xc + w/2).astype(np.int16), (yc + h/2).astype(np.int16)                                     #    右下点坐标 = (xc + w/2, yc + h/2)
     #    拼接后anchors.shape=(batch_size, h, w, k, 5)
@@ -208,6 +239,7 @@ def all_positives_from_fmaps(fmaps,
     idxs = anchors[:, :,:, :, 0] >= threshold
     res = []
     for fmap, idx in zip(anchors, idxs):
-        res.append(fmap[idx])
+        as_ = fmap[idx]
+        res.append(as_)
         pass
     return res

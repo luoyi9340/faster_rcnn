@@ -93,7 +93,7 @@ class RoisCreator():
             @param log_interval: 每多少条记录打一次log
             @param label_mutiple: label是否为多文件（多文件则文件名从*.jsons0开始一直往后，直到读不到为止）
         '''
-        label_files = ds.get_fpaths(label_mutiple=label_mutiple, file_path=label_file_path)
+        label_files = ds.get_fpaths(is_mutiple_file=label_mutiple, file_path=label_file_path)
         
         #    遍历文件，用单文件或线程池的方式跑
         num_labels, num_positives, num_negative = 0, 0, 0
@@ -269,13 +269,13 @@ class RoisCreator():
         #    根据W ,H和feature_map_scaling一次计算所有的中心点坐标
         w_u, h_u = feature_map_scaling, feature_map_scaling                                 #    按照缩放比例计算小区域长宽（特征图中每个点对应原图区域的长宽）
 #         p_all = (W / feature_map_scaling) * (H / feature_map_scaling)                     #    总点数
-        w, h = w_u / 2, h_u / 2                                                             #    第一个点坐标
+        w, h = w_u / 2, h_u / 2                                                             #    中心点对应的原图坐标
         anchors = []
         count_point = 0
         idx_w, idx_h = 0, 0                                                                 #    中心点对应特征图的坐标
         while (w < W and h < H):
             count_point += 1
-            #    生成3种不同尺度和3种不同长宽比的anchor
+            #    生成不同尺度和不同长宽比的anchor
             idx_area, idx_scales = 0, 0
             for area in roi_areas:
                 idx_scales = 0
@@ -366,7 +366,7 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
         @param y_preprocess: y数据预处理
     '''
     label_files = ds.get_fpaths(is_rois_mutiple_file, rois_out)
-    
+
     #    遍历所有文件和所有行
     for fpath in label_files:
         readed = 0
@@ -418,10 +418,7 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 break;
             pass
         pass
-    
     pass
-
-
 #    rpn网络单独训练数据集
 def rpn_train_db(image_dir=conf.DATASET.get_in_train(), 
                         count=conf.DATASET.get_count_train(),
@@ -459,6 +456,40 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                                         output_types=(tf.float32, tf.float32),
                                         output_shapes=(x_shape, y_shape)).batch(batch_size)
     return db
+
+#    rpn网络测试数据集（只能跑测试集的分类ACC和回归MAE）
+def rpn_test_db(image_dir=conf.DATASET.get_in_train(), 
+                count=conf.DATASET.get_count_train(),
+                rois_out=conf.ROIS.get_train_rois_out(), 
+                is_rois_mutiple_file=False,
+                count_positives=conf.RPN.get_train_positives_every_image(),
+                count_negative=conf.RPN.get_train_negative_every_image(),
+                batch_size=conf.RPN.get_train_batch_size(), 
+                ymaps_shape=(12, 30, 6, 15),
+                x_preprocess=None, 
+                y_preprocess=None):
+    '''
+        @return: X, Y (tensor)
+    '''
+    #    rois文件读取器
+    rois_reader = read_rois_generator(count=count,
+                                        rois_out=rois_out, 
+                                        is_rois_mutiple_file=is_rois_mutiple_file,
+                                        image_dir=image_dir, 
+                                        count_positives=count_positives,
+                                        count_negative=count_negative,
+                                        x_preprocess=x_preprocess, 
+                                        y_preprocess=y_preprocess)
+    #    全部取出来
+    X, Y = [], []
+    for x, y in rois_reader:
+        X.append(np.expand_dims(x, axis=0))
+        Y.append(np.expand_dims(y, axis=0))
+        pass
+    X = np.concatenate(X, axis=0)
+    Y = np.concatenate(Y, axis=0)
+    
+    return X, Y
 
 
 #    根据is_rois_mutiple_file和count取数据总数

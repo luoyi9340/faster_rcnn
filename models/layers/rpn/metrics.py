@@ -32,7 +32,7 @@ class RPNMetricCls(tf.keras.metrics.Metric):
             @param fmaps_cls_p: 正样本预测
             @param ymaps_cls_n: 负样本标签
             @param fmaps_cls_n: 负样本预测
-            @return: (TP, TN, FP, TN, P, N)
+            @return: (TP, TN, FP, FN, P, N)
         '''
         #    计算正负样本数量
         P = tf.math.count_nonzero(ymaps_cls_p, dtype=tf.float32)          #    有1个非0点就有1个正样本
