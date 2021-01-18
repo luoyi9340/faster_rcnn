@@ -36,12 +36,12 @@ class ResNet34(tf.keras.layers.Layer):
         -----------------BasicBlock 2-------------------
         Conv:[3*3* base_channel_num*2] stride=2 padding=1 active=relu norm=bn out=[45 * 120 * base_channel_num*2]
         Conv:[3*3* base_channel_num*2] stride=1 padding=1 norm=bn out=[45 * 120 * base_channel_num*2]   
-        shortcut: out=[45 * 120 * base_channel_num*8]   
+        shortcut: out=[45 * 120 * base_channel_num * 4]   
         active: relu
         -----------------BasicBlock 2*3-------------------
         Conv:[3*3* base_channel_num*2] stride=1 padding=1 active=relu norm=bn out=[45 * 120 * base_channel_num*2]
         Conv:[3*3* base_channel_num*2] stride=1 padding=1 norm=bn out=[45 * 120 * base_channel_num*2]   
-        shortcut: out=[45 * 120 * base_channel_num*8]   
+        shortcut: out=[45 * 120 * base_channel_num * 4]   
         active: relu
         times: 3（该层重复3次）
         此时缩放比例为：4
@@ -49,12 +49,12 @@ class ResNet34(tf.keras.layers.Layer):
         -----------------BasicBlock 3-------------------
         Conv:[3*3* base_channel_num*4] stride=2 padding=1 active=relu norm=bn out=[23 * 60 * base_channel_num*4]
         Conv:[3*3*128] stride=1 padding=1 norm=bn out=[23 * 60 * base_channel_num*4]   
-        shortcut: out=[23 * 60 * base_channel_num*16]   
+        shortcut: out=[23 * 60 * base_channel_num * 8]   
         active: relu
         -----------------BasicBlock 3*5-------------------
         Conv:[3*3* base_channel_num*4] stride=1 padding=1 active=relu norm=bn out=[23 * 60 * base_channel_num*4]
         Conv:[3*3* base_channel_num*4] stride=1 padding=1 norm=bn out=[23 * 60 * base_channel_num*4]   
-        shortcut: out=[23 * 60 * base_channel_num*16]   
+        shortcut: out=[23 * 60 * base_channel_num * 8]   
         active: relu
         times: 5（该层重复5次）
         此时缩放比例为：8
@@ -62,12 +62,12 @@ class ResNet34(tf.keras.layers.Layer):
         -----------------BasicBlock 4-------------------
         Conv:[3*3* base_channel_num*8] stride=2 padding=1 active=relu norm=bn out=[12 * 30 * base_channel_num*8]
         Conv:[3*3* base_channel_num*8] stride=1 padding=1 norm=bn out=[12 * 30 * base_channel_num*8]   
-        shortcut: out=[12 * 30 * base_channel_num*32]   
+        shortcut: out=[12 * 30 * base_channel_num * 16]   
         active: relu
         -----------------BasicBlock 4*2-------------------
         Conv:[3*3* base_channel_num*8] stride=1 padding=1 active=relu norm=bn out=[12 * 30 * base_channel_num*8]
         Conv:[3*3* base_channel_num*8] stride=1 padding=1 norm=bn out=[12 * 30 * base_channel_num*8]   
-        shortcut: out=[12 * 30 * base_channel_num*32]   
+        shortcut: out=[12 * 30 * base_channel_num * 16]   
         active: relu
         times: 2（该层重复2次）
         此时缩放比例为：16
@@ -115,7 +115,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer1 = (90, 240, filters_layer1)
 
         #    第2层
-        filters_layer2 = base_channel_num * 4
+        filters_layer2 = base_channel_num * 2
         if (self.__num_layer >= 2):
             self.__layer2 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer2_BasicBlock1', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer1), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -126,7 +126,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer2 = (90, 240, filters_layer2)
         
         #    第3层
-        filters_layer3 = base_channel_num * 8
+        filters_layer3 = base_channel_num * 4
         if (self.__num_layer >= 3):
             self.__layer3 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer3_BasicBlock1', filters=[filters_layer3, filters_layer3], strides=2, input_shape=(90, 240, filters_layer2), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -138,7 +138,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer3 = (45, 120, filters_layer3)
         
         #    第4层
-        filters_layer4 = base_channel_num * 16
+        filters_layer4 = base_channel_num * 8
         if (self.__num_layer >= 4):
             self.__layer4 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer4_BasicBlock1', filters=[filters_layer4, filters_layer4], strides=2, input_shape=(45, 120, filters_layer3), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -152,7 +152,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer4 = (23, 60, filters_layer4)
         
         #    第5层
-        filters_layer5 = base_channel_num * 32
+        filters_layer5 = base_channel_num * 16
         if (self.__num_layer >= 5):
             self.__layer5 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer5_BasicBlock1', filters=[filters_layer5, filters_layer5], strides=2, input_shape=(23, 60, filters_layer4), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -302,7 +302,7 @@ class ResNet50(tf.keras.layers.Layer):
     #    装配网络
     def __assembling(self, base_channel_num=32):
         #    第1层
-        filters_layer1 = base_channel_num * 1
+        filters_layer1 = base_channel_num * 2
         if (self.__num_layer >= 1):
             self.__layer1 = tf.keras.models.Sequential([
                     tf.keras.layers.ZeroPadding2D(1),
@@ -314,8 +314,8 @@ class ResNet50(tf.keras.layers.Layer):
         self.output_shape_layer1 = (90, 240, filters_layer1)
         
         #    第2层
-        filters_rdim_layer2 = base_channel_num * 1
-        filters_layer2 = base_channel_num * 4
+        filters_rdim_layer2 = base_channel_num * 2
+        filters_layer2 = base_channel_num * 8
         if (self.__num_layer >= 2):
             self.__layer2 = tf.keras.models.Sequential([
                     Bottleneck(name=self.name + '_layer2_Bottleneck1', filters=[filters_rdim_layer2, filters_rdim_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer1), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -326,8 +326,8 @@ class ResNet50(tf.keras.layers.Layer):
         self.output_shape_layer2 = (90, 240, filters_layer2)
         
         #    第3层
-        filters_rdim_layer3 = base_channel_num * 2
-        filters_layer3 = base_channel_num * 8
+        filters_rdim_layer3 = base_channel_num * 4
+        filters_layer3 = base_channel_num * 16
         if (self.__num_layer >= 3):
             self.__layer3 = tf.keras.models.Sequential([
                     Bottleneck(name=self.name + '_layer3_Bottleneck1', filters=[filters_rdim_layer3, filters_rdim_layer3, filters_layer3], strides=2, input_shape=(90, 240, filters_layer2), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -339,8 +339,8 @@ class ResNet50(tf.keras.layers.Layer):
         self.output_shape_layer3 = (45, 120, filters_layer3)
         
         #    第4层
-        filters_rdim_layer4 = base_channel_num * 4
-        filters_layer4 = base_channel_num * 16
+        filters_rdim_layer4 = base_channel_num * 8
+        filters_layer4 = base_channel_num * 32
         if (self.__num_layer >= 4):
             self.__layer4 = tf.keras.models.Sequential([
                     Bottleneck(name=self.name + '_layer4_Bottleneck1', filters=[filters_rdim_layer4, filters_rdim_layer4, filters_layer4], strides=2, input_shape=(45, 120, filters_layer3), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -354,8 +354,8 @@ class ResNet50(tf.keras.layers.Layer):
         self.output_shape_layer4 = (23, 60, filters_layer4)
         
         #    第5层
-        filters_rdim_layer5 = base_channel_num * 8
-        filters_layer5 = base_channel_num * 32
+        filters_rdim_layer5 = base_channel_num * 16
+        filters_layer5 = base_channel_num * 64
         if (self.__num_layer >= 5):
             self.__layer5 = tf.keras.models.Sequential([
                     Bottleneck(name=self.name + '_layer5_Bottleneck1', filters=[filters_rdim_layer5, filters_rdim_layer5, filters_layer5], strides=2, input_shape=(23, 60, filters_layer4), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),

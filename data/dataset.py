@@ -49,7 +49,6 @@ def label_file_iterator(label_file_path=conf.DATASET.get_label_train(),
     for line in open(label_file_path, mode='r', encoding='utf-8'):
         if (i >= count): break
         i += 1
-        
         j = json.loads(line)
         
         file_name = j['fileName']

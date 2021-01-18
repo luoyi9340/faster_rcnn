@@ -42,6 +42,7 @@ class BasicBlock(tf.keras.layers.Layer):
         
         #    规定输出格式
         self.__output_shape = output_shape
+        self.__input_shape = input_shape
         
         #    定义两层3*3卷积
         self.__conv = tf.keras.models.Sequential([
@@ -58,7 +59,7 @@ class BasicBlock(tf.keras.layers.Layer):
         #    定义downsample。有一点原则，特征图体积缩小必然伴随通道数增加。否则体积与通道数都不变
         #    而且卷积核一定是3*3的，所以可以用1*1卷积核和strides直接操作
         self.__strides = strides
-        if (strides != 1):
+        if (strides != 1 or self.__output_shape[2] != self.__input_shape[2]):
             self.__downsample = tf.keras.layers.Conv2D(filters[1], kernel_size=(1, 1), strides=strides, trainable=False, padding='valid', kernel_initializer=tf.keras.initializers.ones(), bias_initializer=tf.keras.initializers.zeros())
             pass
         
@@ -68,7 +69,7 @@ class BasicBlock(tf.keras.layers.Layer):
         y = self.__conv(X, training=training, mask=mask)
         
         #    如果strides != 1说明特征图尺寸和深度都发生了改变
-        if (self.__strides != 1):
+        if (self.__strides != 1 or self.__output_shape[2] != self.__input_shape[2]):
             X = self.__downsample(X)
             pass
         

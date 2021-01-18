@@ -39,11 +39,11 @@ log.info('create train_rois. num_labels:%d num_positives:%d num_negative:%d', nu
                                                                   max_workers=conf.ROIS.get_val_max_workers())
 log.info('create val_rois. num_labels:%d num_positives:%d num_negative:%d', num_labels, num_positives, num_negative)
 
-#    生成测试rois
-(num_labels, num_positives, num_negative) = rois_creator.create(label_file_path=conf.DATASET.get_label_test(), 
-                                                                  rois_out=conf.ROIS.get_test_rois_out(), 
-                                                                  count=conf.DATASET.get_count_test(),
-                                                                  label_mutiple=conf.DATASET.get_label_test_mutiple(),
-                                                                  max_workers=conf.ROIS.get_test_max_workers())
-log.info('create test_rois. num_labels:%d num_positives:%d num_negative:%d', num_labels, num_positives, num_negative)
+# #    生成测试rois
+# (num_labels, num_positives, num_negative) = rois_creator.create(label_file_path=conf.DATASET.get_label_test(), 
+#                                                                   rois_out=conf.ROIS.get_test_rois_out(), 
+#                                                                   count=conf.DATASET.get_count_test(),
+#                                                                   label_mutiple=conf.DATASET.get_label_test_mutiple(),
+#                                                                   max_workers=conf.ROIS.get_test_max_workers())
+# log.info('create test_rois. num_labels:%d num_positives:%d num_negative:%d', num_labels, num_positives, num_negative)
 

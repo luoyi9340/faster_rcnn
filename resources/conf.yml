@@ -23,7 +23,7 @@ dataset:
 rois:
    #   每张图片生成的用于训练的roi矩形框信息（每个图片一个json，包含图片的roi矩形框）
    #   json格式：{file_name:"文件名", vcode:"验证码", positives:[((x,y,w,h), (v, x,y,w,h))...], negative:[(x,y,w,h), ...]}
-   train_rois_out: temp/rois/rois_train.jsons0
+   train_rois_out: temp/rois/rois_train.jsons
    #   当对应的label_*_mutiple为true时有效。同时开启几个线程写入jsons，<=0表示单线程。（一个文件给1个线程，暂时还没摸清python的锁机制，不敢一个文件同时写。。。）
    #   若上面分文件时，这里也会对应写入多份jsons文件。对应rois_train.jsons1, rois_train.jsons2, ...
    train_max_workers: -1
@@ -40,9 +40,9 @@ rpn:
    #   判定为负样本的iou比率（与所有label的IOU都小于该值）
    train_negative_iou: 0.05
    #   每张图片多少个正样本（超过的IoU降序取前多少个，不够的补IoU=-1的数据）
-   train_positives_every_image: 64
+   train_positives_every_image: 32
    #   每张图片多少个负样本（不够的补IoU=-1的数据）
-   train_negative_every_image: 64
+   train_negative_every_image: 32
    #   训练时每次取多少张图片
    train_batch_size: 2
    #   训练时的学习率
@@ -57,26 +57,19 @@ rpn:
    tensorboard_dir: logs/tensorboard/rpn
    #   roi 面积大小（想不通原生faster_rcc为什么只用了9种anchor就能较好覆盖gt。。。） 
    roi_areas:
-      - 64 
-      - 68
-      - 72
-      - 76
-      - 84
-   #   - 92
-   #   - 96
-   #   - 104
-   #   - 112
-   #   - 120
-   #   - 128
+      - 64                  #   6code时较高命中
+      - 68                  #   6、5code时较高命中
+      - 76                  #   6、5code时较高命中
+      - 80                  #   6、5、4code时较高命中
+      - 84                  #   6,4code时较高命中
+      - 92                  #   4code时较高命中
+   #   - 100                #   4code时较高命中
    #   roi w:h 比例（与原生faster_cnn要识别的图不一样。我的数据集中只有验证码，而且每个验证码gt框都是80*100这样大小的）
    roi_scales:
-   #   - 0.5
-      - 0.75
-      - 1
-      - 1.25
-   #   - 2
+      - 0.8                #   4:5 6、5code时较高命中（此时label基本都是5:8，7:10）
+      - 1                  #   1:1 4code时较高命中（此时label基本都是1:1的）
    #   用的什么cnns网络（resnet32 | resnet50）
-   cnns: resnet34
+   cnns: resnet50
    #   nms中判定为前景的最小置信度（大于此概率的anchor会被判定为前景）
    nms_threshold_positives: 0.999999
    #   nms中判定为重叠的最小IoU（大于此IoU的anchor会被判定为重叠而被过滤掉）

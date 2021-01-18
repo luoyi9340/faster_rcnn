@@ -20,7 +20,8 @@ def show_anchors(fa,
                  is_show_negative=True,
                  count_negative=100,
                  is_show_labels=True,
-                 is_show_anchors=True):
+                 is_show_anchors=True,
+                 is_show_anchors_center=True):
     file = DATASET.get_in_train() + "/" + fa['file_name'] + ".png"
     img = Image.open(file)
     img = img.resize((480, 180), Image.ANTIALIAS)
@@ -59,7 +60,16 @@ def show_anchors(fa,
         for anchor in rois_creator._original_anchors:
             rect = plot.Rectangle((anchor[0]-anchor[2]/2, anchor[1]-anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor='yellow',linewidth=1)
             ax.add_patch(rect)
-        #     plot.scatter(anchor[0], anchor[1])
+            pass
+        pass
+    
+    #    打印全部anchor中心点
+    if (is_show_anchors_center):
+        prev_x, prev_y = None, None
+        for anchor in rois_creator._original_anchors:
+            if (prev_x == anchor[0] and prev_y == anchor[1]): continue
+            plot.scatter(anchor[0], anchor[1])
+            prev_x, prev_y = anchor[0], anchor[1]
             pass
         pass
      
@@ -93,17 +103,21 @@ def show_msg(anchors_iterator):
 
 rois_creator = rois.RoisCreator()
 # rois_creator.create()
-file_anchors = rois_creator.test_create(label_file_path=DATASET.get_label_train() + '0', 
+file_anchors = rois_creator.test_create(label_file_path=DATASET.get_label_train(), 
 #                                         file_name='159af410-cc08-41a8-8156-c563d831a0d0', 
                                         count=100, 
-                                        train_positives_iou=0.8,
+                                        train_positives_iou=0.7,
                                         train_negative_iou=0.05)
-fa = file_anchors[1]
+fa = file_anchors[8]
 show_anchors(fa, 
              is_show_positive=True, 
              is_show_negative=False, 
              is_show_labels=True, 
-             is_show_anchors=False)
+             is_show_anchors=False,
+             is_show_anchors_center=False)
+
+
+
 
 
 
