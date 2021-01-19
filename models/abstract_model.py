@@ -119,8 +119,6 @@ class AModel(metaclass=abc.ABCMeta):
                                    auto_tensorboard, auto_tensorboard_dir,
                                    batch_size=batch_size)
         
-        #    设置数据集重复读几次
-        db_train = db_train.repeat(epochs)
         his = self._net.fit_generator(db_train, 
                                       validation_data=db_val,
                                       steps_per_epoch=steps_per_epoch, 

@@ -15,13 +15,23 @@ import models.layers.rpn.preprocess as preprocess
 
 
 image_dir = conf.DATASET.get_in_train()
-count = 5
+count = 10
 rois_out = conf.ROIS.get_train_rois_out()
 is_rois_mutiple_file = False
 count_positives = 64
 count_negative = 64
 batch_size = 2
 ymaps_shape = (23, 60, 6, 15)
-db = rois.rpn_train_db(image_dir, count, rois_out, is_rois_mutiple_file, count_positives, count_negative, batch_size, ymaps_shape, 
+db = rois.rpn_train_db(image_dir=image_dir, 
+                       count=count, 
+                       rois_out=rois_out, 
+                       is_rois_mutiple_file=is_rois_mutiple_file, 
+                       count_positives=count_positives, 
+                       count_negative=count_negative, 
+                       batch_size=batch_size, 
+                       ymaps_shape=ymaps_shape, 
                        x_preprocess=lambda x:((x / 255.) - 0.5) * 2, 
                        y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, ymaps_shape, count_positives, count_negative))
+for x, y in db:
+    print(x.shape)
+pass

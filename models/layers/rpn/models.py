@@ -9,7 +9,6 @@ import tensorflow as tf
 
 import utils.conf as conf
 
-
 #    RPN网络
 class RPNNet(tf.keras.layers.Layer):
     '''RPN网络
@@ -30,7 +29,7 @@ class RPNNet(tf.keras.layers.Layer):
             loss: smooth L1
             
     '''
-    def __init__(self, training=True, input_shape=(12, 30, 512), K=conf.RPN.get_K(), loss_lamda=conf.RPN.get_loss_lamda(), kernel_initializer = tf.initializers.he_normal(), bias_initializer = tf.initializers.Zeros(), **kwargs):
+    def __init__(self, training=True, input_shape=(12, 30, 512), K=conf.ROIS.get_K(), loss_lamda=conf.RPN.get_loss_lamda(), kernel_initializer = tf.initializers.he_normal(), bias_initializer = tf.initializers.Zeros(), **kwargs):
         '''
             @param training: 本层是否参与训练
             @param input_shape: 输入尺寸

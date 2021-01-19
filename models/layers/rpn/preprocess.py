@@ -14,8 +14,8 @@ import utils.conf as conf
 #    将标签数据整形为feature_maps一致的形状
 def preprocess_like_fmaps(y_true, 
                           shape=(12, 30, 6, 15), 
-                          count_positives=conf.RPN.get_train_positives_every_image(),
-                          count_negative=conf.RPN.get_train_negative_every_image()):
+                          count_positives=conf.ROIS.get_positives_every_image(),
+                          count_negative=conf.ROIS.get_negative_every_image()):
     '''自定义的loss和metrics无法直接用numpy。这里做类似one_hot的事情，提前将y_true数据整形成y_pred一致。loss和metrics只做简单的事情
         @param y_true: numpy:(count_positives+count_negative, 14)
                         [[IoU, x, y, w, h, idx_w, idx_h, idx_area, idx_scales, vcode_index, x, y, w, h]
@@ -47,7 +47,7 @@ def preprocess_like_fmaps(y_true,
     #    正样本的(h, w, 0, k)置为1
     idx_fmap = y_true_positives[:, [5,6]].astype(np.int8)
     idx_anchor = y_true_positives[:, [7,8]].astype(np.int8)
-    idx_anchor = idx_anchor[:,0] * len(conf.RPN.get_roi_scales()) + idx_anchor[:,1]
+    idx_anchor = idx_anchor[:,0] * len(conf.ROIS.get_roi_scales()) + idx_anchor[:,1]
     idx_anchor = tuple(idx_anchor)
     fmap_w = tuple(idx_fmap[:,0])
     fmap_h = tuple(idx_fmap[:,1])
@@ -55,7 +55,7 @@ def preprocess_like_fmaps(y_true,
     #    负样本的(h, w, 1, k)置为-1
     idx_fmap = y_true_negative[:, [5,6]].astype(np.int8)
     idx_anchor = y_true_negative[:, [7,8]].astype(np.int8)
-    idx_anchor = idx_anchor[:,0] * len(conf.RPN.get_roi_scales()) + idx_anchor[:,1]
+    idx_anchor = idx_anchor[:,0] * len(conf.ROIS.get_roi_scales()) + idx_anchor[:,1]
     idx_anchor = tuple(idx_anchor)
     fmap_w = tuple(idx_fmap[:,0])
     fmap_h = tuple(idx_fmap[:,1])
@@ -78,7 +78,7 @@ def preprocess_like_fmaps(y_true,
     #    根据fmap索引和anchor索引写入模板
     idx_fmap = y_true_positives[:, [5,6]].astype(np.int8)
     idx_anchor = y_true_positives[:, [7,8]].astype(np.int8)
-    idx_anchor = idx_anchor[:,0] * len(conf.RPN.get_roi_scales()) + idx_anchor[:,1]
+    idx_anchor = idx_anchor[:,0] * len(conf.ROIS.get_roi_scales()) + idx_anchor[:,1]
     idx_anchor = tuple(idx_anchor)
     fmap_w = tuple(idx_fmap[:,0])
     fmap_h = tuple(idx_fmap[:,1])
@@ -163,10 +163,10 @@ def takeout_sample_np(ytrue_maps, feature_maps):
 #    从fmaps拿全部判定为正样本的anchor
 def all_positives_from_fmaps(fmaps, 
                              threshold=conf.RPN.get_nms_threshold_positives(), 
-                             K=conf.RPN.get_K(),
+                             K=conf.ROIS.get_K(),
                              feature_map_scaling=conf.CNNS.get_feature_map_scaling(),
-                             roi_areas=conf.RPN.get_roi_areas(),
-                             roi_scales=conf.RPN.get_roi_scales()):
+                             roi_areas=conf.ROIS.get_roi_areas(),
+                             roi_scales=conf.ROIS.get_roi_scales()):
     '''从fmaps拿全部判定为正样本的anchor
         @param fmaps: numpy(num, H, W, 6, K) RPNModel拿到的特征图
         @param threshold: 判定正样本的阈值。(num, H, W, 0, K) > 此值判定为正样本

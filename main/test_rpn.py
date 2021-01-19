@@ -18,8 +18,8 @@ import numpy as np
 
 import data.dataset as ds
 import data.dataset_rois as ds_rois
-import models.rpn as rpn
 import utils.conf as conf
+import models.rpn as rpn
 from models.layers.rpn.preprocess import preprocess_like_fmaps
 
 
@@ -51,11 +51,11 @@ X_test, Y_test = ds_rois.rpn_test_db(image_dir=conf.DATASET.get_in_test(),
                                      count=count, 
                                      rois_out=conf.ROIS.get_test_rois_out(), 
                                      is_rois_mutiple_file=conf.DATASET.get_label_test_mutiple(), 
-                                     count_positives=conf.RPN.get_train_positives_every_image(), 
-                                     count_negative=conf.RPN.get_train_negative_every_image(), 
+                                     count_positives=conf.ROIS.get_positives_every_image(), 
+                                     count_negative=conf.ROIS.get_negative_every_image(), 
                                      x_preprocess=lambda x:x, 
                                      y_preprocess=lambda y:preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
-fmaps = rpn_model.test(X_test, batch_size=conf.RPN.get_train_batch_size())
+fmaps = rpn_model.test(X_test, batch_size=conf.ROIS.get_batch_size())
 TP, TN, FP, FN, P, N = rpn_model.test_cls(fmaps, Y_test)
 print('分类准确率((TP + TN) / (P + N)):', (TP + TN) / (P + N))
 mae = rpn_model.test_reg(fmaps, Y_test)
@@ -77,7 +77,7 @@ X, Y = ds.load_XY_np(count=count,
 
   
 #    拿到测试数据全部的建议框
-fmaps = rpn_model.test(X, batch_size=conf.RPN.get_train_batch_size())
+fmaps = rpn_model.test(X, batch_size=conf.ROIS.get_batch_size())
 anchors = rpn_model.candidate_box_from_fmap(fmaps=fmaps, 
                                             threshold_prob=conf.RPN.get_nms_threshold_positives(), 
                                             threshold_iou=conf.RPN.get_nms_threshold_iou())

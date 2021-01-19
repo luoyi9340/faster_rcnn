@@ -36,25 +36,26 @@ def load_conf_yaml(yaml_path=CONF_PATH):
                     c['dataset']['in_val'], c['dataset']['count_val'], c['dataset']['label_val'], c['dataset']['label_val_mutiple'],
                     c['dataset']['in_test'], c['dataset']['count_test'], c['dataset']['label_test'], c['dataset']['label_test_mutiple'])
     
-    rois = Rois(c['rois']['train_rois_out'],
+    rois = Rois(c['rois']['positives_iou'],
+                c['rois']['negative_iou'],
+                c['rois']['positives_every_image'],
+                c['rois']['negative_every_image'],
+                c['rois']['shuffle_buffer_rate'],
+                c['rois']['batch_size'],
+                c['rois']['epochs'],
+                c['rois']['roi_areas'],
+                c['rois']['roi_scales'],
+                c['rois']['train_rois_out'],
                 c['rois']['train_max_workers'],
                 c['rois']['val_rois_out'],
                 c['rois']['val_max_workers'],
                 c['rois']['test_rois_out'],
                 c['rois']['test_max_workers'])
     
-    rpn = Rpn(c['rpn']['train_positives_iou'],
-              c['rpn']['train_negative_iou'],
-              c['rpn']['train_positives_every_image'],
-              c['rpn']['train_negative_every_image'],
-              c['rpn']['train_batch_size'],
-              c['rpn']['train_learning_rate'],
-              c['rpn']['train_epochs'],
+    rpn = Rpn(c['rpn']['train_learning_rate'],
               c['rpn']['loss_lamda'],
               c['rpn']['save_weights_dir'],
               c['rpn']['tensorboard_dir'],
-              c['rpn']['roi_areas'],
-              c['rpn']['roi_scales'],
               c['rpn']['cnns'],
               c['rpn']['nms_threshold_positives'],
               c['rpn']['nms_threshold_iou'])
@@ -108,51 +109,25 @@ class Dataset:
 #    RPN相关配置
 class Rpn():
     def __init__(self, 
-                 train_positives_iou=0.7,
-                 train_negative_iou=0.3,
-                 train_positives_every_image=256,
-                 train_negative_every_image=256,
-                 train_batch_size=2,
                  train_learning_rate=0.01,
-                 train_epochs=5,
                  loss_lamda=10,
                  save_weights_dir="models",
                  tensorboard_dir="logs/tensorboard",
-                 roi_areas=[128, 256, 512],
-                 roi_scales=[0.5, 1., 2.],
                  cnns='reset_34',
                  nms_threshold_positives=0.5,
                  nms_threshold_iou=0.7):
-        self.__train_positives_iou = train_positives_iou
-        self.__train_negative_iou = train_negative_iou
-        self.__train_positives_every_image = train_positives_every_image
-        self.__train_negative_every_image = train_negative_every_image
-        self.__train_batch_size = train_batch_size
         self.__train_learning_rate = train_learning_rate
-        self.__train_epochs = train_epochs
         self.__loss_lamda = loss_lamda
         self.__save_weights_dir = save_weights_dir
         self.__tensorboard_dir = tensorboard_dir
-        self.__roi_areas = roi_areas
-        self.__roi_scales = roi_scales
-        self.__K = len(roi_areas) * len(roi_scales)
         self.__cnns = cnns
         self.__nms_threshold_positives = nms_threshold_positives
         self.__nms_threshold_iou = nms_threshold_iou
         pass
-    def get_train_positives_iou(self): return self.__train_positives_iou
-    def get_train_positives_every_image(self): return self.__train_positives_every_image
-    def get_train_negative_every_image(self): return self.__train_negative_every_image
-    def get_train_batch_size(self): return self.__train_batch_size
     def get_train_learning_rate(self): return self.__train_learning_rate
-    def get_train_epochs(self): return self.__train_epochs
     def get_loss_lamda(self): return self.__loss_lamda
-    def get_train_negative_iou(self): return self.__train_negative_iou
     def get_save_weights_dir(self): return convert_to_abspath(self.__save_weights_dir)
     def get_tensorboard_dir(self): return convert_to_abspath(self.__tensorboard_dir)
-    def get_roi_areas(self): return self.__roi_areas
-    def get_roi_scales(self): return self.__roi_scales
-    def get_K(self): return self.__K
     def get_cnns(self): return self.__cnns
     def get_nms_threshold_positives(self): return self.__nms_threshold_positives
     def get_nms_threshold_iou(self): return self.__nms_threshold_iou
@@ -161,19 +136,50 @@ class Rpn():
 #    ROIS相关配置
 class Rois():
     def __init__(self, 
+                 positives_iou=0.7,
+                 negative_iou=0.3,
+                 positives_every_image=64,
+                 negative_every_image=64,
+                 shuffle_buffer_rate=128,
+                 batch_size=2,
+                 epochs=5,
+                 roi_areas=[64, 68, 76, 80, 84, 92],
+                 roi_scales=[0.8, 1.],
                  train_rois_out='temp/rois/rois_train.jsons',
                  train_max_workers=-1,
                  val_rois_out='temp/rois/rois_val.jsons',
                  val_max_workers=-1,
                  test_rois_out='temp/rois/rois_test.jsons',
                  test_max_workers=-1):
+        self.__positives_iou = positives_iou
+        self.__negative_iou = negative_iou
+        self.__positives_every_image = positives_every_image
+        self.__negative_every_image = negative_every_image
+        self.__shuffle_buffer_rate = shuffle_buffer_rate
+        self.__batch_size = batch_size
+        self.__epochs = epochs
+        self.__roi_areas = roi_areas
+        self.__roi_scales = roi_scales
+        
         self.__train_rois_out = train_rois_out
         self.__train_max_workers = train_max_workers
         self.__val_rois_out = val_rois_out
         self.__val_max_workers = val_max_workers
         self.__test_rois_out = test_rois_out
         self.__test_max_workers = test_max_workers
+        
+        self.__K = len(roi_areas) * len(roi_scales)
         pass
+    def get_positives_iou(self): return self.__positives_iou
+    def get_negative_iou(self): return self.__negative_iou
+    def get_positives_every_image(self): return self.__positives_every_image
+    def get_negative_every_image(self): return self.__negative_every_image
+    def get_shuffle_buffer_rate(self): return self.__shuffle_buffer_rate
+    def get_batch_size(self): return self.__batch_size
+    def get_epochs(self): return self.__epochs
+    def get_roi_areas(self): return self.__roi_areas
+    def get_roi_scales(self): return self.__roi_scales
+    def get_K(self): return self.__K
     def get_train_rois_out(self): return convert_to_abspath(self.__train_rois_out)
     def get_train_max_workers(self): return self.__train_max_workers
     def get_val_rois_out(self): return convert_to_abspath(self.__val_rois_out)

@@ -28,11 +28,11 @@ class RoisCreator():
     '''rois生成器
     '''
     def __init__(self, 
-                 roi_areas=conf.RPN.get_roi_areas(),                                     #    roi框面积[32, 64, 128]
-                 roi_scales=conf.RPN.get_roi_scales(),                                   #    roi框长宽比例[0.5, 1., 2.]
+                 roi_areas=conf.ROIS.get_roi_areas(),                                     #    roi框面积[32, 64, 128]
+                 roi_scales=conf.ROIS.get_roi_scales(),                                   #    roi框长宽比例[0.5, 1., 2.]
                  cnns_feature_map_scaling=conf.CNNS.get_feature_map_scaling(),           #    cnns层缩放比例，16
-                 train_positives_iou=conf.RPN.get_train_positives_iou(),                 #    正样本IoU阈值
-                 train_negative_iou=conf.RPN.get_train_negative_iou()                    #    负样本IoU阈值
+                 train_positives_iou=conf.ROIS.get_positives_iou(),                 #    正样本IoU阈值
+                 train_negative_iou=conf.ROIS.get_negative_iou()                    #    负样本IoU阈值
                  ):
         self.__roi_areas = roi_areas
         self.__roi_scales = roi_scales
@@ -139,8 +139,8 @@ class RoisCreator():
                     file_name=None,
                     label_file_path=conf.DATASET.get_label_train(),
                     count=conf.DATASET.get_count_train(),
-                    train_positives_iou=conf.RPN.get_train_positives_iou(), 
-                    train_negative_iou=conf.RPN.get_train_negative_iou()):
+                    train_positives_iou=conf.ROIS.get_positives_iou(), 
+                    train_negative_iou=conf.ROIS.get_negative_iou()):
         #    迭代标签文件
         label_iterator = ds.label_file_iterator(label_file_path=label_file_path, count=count)
         file_anchors = []
@@ -203,8 +203,8 @@ class RoisCreator():
             pass
         
         #    限制负样本的数量（负样本太多了），预留4倍的数量，以后配置用
-        if (len(negative) > conf.RPN.get_train_negative_every_image() * 4):
-            negative = negative[:conf.RPN.get_train_negative_every_image() * 4]
+        if (len(negative) > conf.ROIS.get_negative_every_image() * 4):
+            negative = negative[:conf.ROIS.get_negative_every_image() * 4]
             pass
         
         j['positives'] = positives
@@ -349,8 +349,8 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                         rois_out=conf.ROIS.get_train_rois_out(), 
                         is_rois_mutiple_file=False,
                         image_dir=conf.DATASET.get_in_train(), 
-                        count_positives=conf.RPN.get_train_positives_every_image(),
-                        count_negative=conf.RPN.get_train_negative_every_image(),
+                        count_positives=conf.ROIS.get_positives_every_image(),
+                        count_negative=conf.ROIS.get_negative_every_image(),
                         x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
                         y_preprocess=None):
     '''rpn网络单独训练数据集生成器
@@ -390,7 +390,6 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 #    x数据做前置处理（归一化在这里做）
                 if (x_preprocess is not None):x = x_preprocess(x)
                 
-                
                 #    读取训练数据信息
                 #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
                 positives = d['positives']
@@ -408,7 +407,7 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 negative = [[a[0]] + a[1] for a in negative]
                 #    补label标签
                 negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
-                negative = negative.tolist()
+#                 negative = negative.tolist()
                 #    如果不足count_negative，用IoU=-1，其他全0补全
                 if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
                 negative = np.array(negative)
@@ -431,9 +430,11 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                         count=conf.DATASET.get_count_train(),
                         rois_out=conf.ROIS.get_train_rois_out(), 
                         is_rois_mutiple_file=False,
-                        count_positives=conf.RPN.get_train_positives_every_image(),
-                        count_negative=conf.RPN.get_train_negative_every_image(),
-                        batch_size=conf.RPN.get_train_batch_size(), 
+                        count_positives=conf.ROIS.get_positives_every_image(),
+                        count_negative=conf.ROIS.get_negative_every_image(),
+                        batch_size=conf.ROIS.get_batch_size(), 
+                        shuffle_buffer_rate=conf.ROIS.get_shuffle_buffer_rate(),
+                        epochs=conf.ROIS.get_epochs(),
                         ymaps_shape=(12, 30, 6, 15),
                         x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
                         y_preprocess=None):
@@ -445,6 +446,8 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
         @param count_positives: 每张图片多少个正样本
         @param count_negative: 每张图片多少个负样本
         @param batch_size: 数据集的batch_size
+        @param epochs: 训练轮数
+        @param shuffle_size_rate: 打乱数据buffer_size是batch_size的多少倍。小于0表示不打乱
         @param ymaps_shape: 特征图尺寸（参照one_hot做法会把label数据提前做成特征图的尺寸给到模型）
         @param x_preprocess: 训练数据预处理
         @param y_preprocess: 标签数据预处理（做成特征图尺寸就是在这里做的. 参考:rpn.preprocess.preprocess_like_fmaps）
@@ -461,7 +464,12 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                                                                    x_preprocess=x_preprocess, 
                                                                    y_preprocess=y_preprocess),
                                         output_types=(tf.float32, tf.float32),
-                                        output_shapes=(x_shape, y_shape)).batch(batch_size)
+                                        output_shapes=(x_shape, y_shape))
+    if (shuffle_buffer_rate > 0):
+        db = db.shuffle(buffer_size=shuffle_buffer_rate * batch_size)
+        pass
+    if (batch_size): db = db.batch(batch_size)
+    if (epochs): db= db.repeat(epochs)
     return db
 
 #    rpn网络测试数据集（只能跑测试集的分类ACC和回归MAE）
@@ -469,9 +477,9 @@ def rpn_test_db(image_dir=conf.DATASET.get_in_train(),
                 count=conf.DATASET.get_count_train(),
                 rois_out=conf.ROIS.get_train_rois_out(), 
                 is_rois_mutiple_file=False,
-                count_positives=conf.RPN.get_train_positives_every_image(),
-                count_negative=conf.RPN.get_train_negative_every_image(),
-                batch_size=conf.RPN.get_train_batch_size(), 
+                count_positives=conf.ROIS.get_positives_every_image(),
+                count_negative=conf.ROIS.get_negative_every_image(),
+                batch_size=conf.ROIS.get_batch_size(), 
                 ymaps_shape=(12, 30, 6, 15),
                 x_preprocess=None, 
                 y_preprocess=None):

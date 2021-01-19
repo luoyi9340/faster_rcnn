@@ -39,8 +39,8 @@ log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(),
 total_sample_train = rois.total_sample(is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
                                        count=conf.DATASET.get_count_train(), 
                                        rois_out=conf.ROIS.get_train_rois_out())
-batch_size = conf.RPN.get_train_batch_size()
-epochs = conf.RPN.get_train_epochs()
+batch_size = conf.ROIS.get_batch_size()
+epochs = conf.ROIS.get_epochs()
 
 
 log.info('training RPNModel begin...')
@@ -49,16 +49,18 @@ db_train = rois.rpn_train_db(count=conf.DATASET.get_count_train(),
                              image_dir=conf.DATASET.get_in_train(), 
                              rois_out=conf.ROIS.get_train_rois_out(), 
                              is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(),
-                             count_positives=conf.RPN.get_train_positives_every_image(),
-                             count_negative=conf.RPN.get_train_negative_every_image(),
+                             count_positives=conf.ROIS.get_positives_every_image(),
+                             count_negative=conf.ROIS.get_negative_every_image(),
+                             shuffle_buffer_rate=conf.ROIS.get_shuffle_buffer_rate(),
                              batch_size=batch_size,
+                             epochs=epochs,
                              ymaps_shape=rpn_model.rpn.get_output_shape(),
-                             x_preprocess=lambda x:((x / 255.) - 0.5) * 2,
+                             x_preprocess=None,
                              y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
 log.info('db_train rois finished.')
 log.info('db_train rois image_dir:%s', conf.DATASET.get_in_train())
 log.info('db_train rois rois_out:%s', conf.ROIS.get_train_rois_out())
-log.info('db_train rois count_positives:%d count_negative:%d batch_size:%d', conf.RPN.get_train_positives_every_image(), conf.RPN.get_train_negative_every_image(), conf.RPN.get_train_batch_size())
+log.info('db_train rois count_positives:%d count_negative:%d batch_size:%d', conf.ROIS.get_positives_every_image(), conf.ROIS.get_negative_every_image(), conf.ROIS.get_batch_size())
 log.info('db_train:{}'.format(db_train))
 
 
@@ -66,16 +68,18 @@ db_val = rois.rpn_train_db(count=conf.DATASET.get_count_val(),
                            image_dir=conf.DATASET.get_in_val(), 
                            rois_out=conf.ROIS.get_val_rois_out(), 
                            is_rois_mutiple_file=conf.DATASET.get_label_val_mutiple(),
-                           count_positives=conf.RPN.get_train_positives_every_image(),
-                           count_negative=conf.RPN.get_train_negative_every_image(),
+                           count_positives=conf.ROIS.get_positives_every_image(),
+                           count_negative=conf.ROIS.get_negative_every_image(),
                            batch_size=batch_size,
+                           shuffle_buffer_rate=-1,
+                           epochs=None,
                            ymaps_shape=rpn_model.rpn.get_output_shape(),
                            x_preprocess=None,
                            y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
 log.info('db_val rois finished.')
 log.info('db_val rois image_dir:%s', conf.DATASET.get_in_val())
 log.info('db_val rois rois_out:%s', conf.ROIS.get_val_rois_out())
-log.info('db_val rois count_positives:%d count_negative:%d batch_size:%d', conf.RPN.get_train_positives_every_image(), conf.RPN.get_train_negative_every_image(), conf.RPN.get_train_batch_size())
+log.info('db_val rois count_positives:%d count_negative:%d batch_size:%d', conf.ROIS.get_positives_every_image(), conf.ROIS.get_negative_every_image(), conf.ROIS.get_batch_size())
 log.info('db_val:{}'.format(db_train))
 
 

@@ -23,7 +23,7 @@ class RPNModel(models.AModel):
     def __init__(self, cnns_name=conf.RPN.get_cnns(), 
                         learning_rate=conf.RPN.get_train_learning_rate(),
                         scaling=conf.CNNS.get_feature_map_scaling(), 
-                        K=conf.RPN.get_K(),
+                        K=conf.ROIS.get_K(),
                         cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
                         train_cnns=True,
                         train_rpn=True,
@@ -130,9 +130,9 @@ class RPNModel(models.AModel):
                                 fmaps, 
                                 threshold_prob=conf.RPN.get_nms_threshold_positives(), 
                                 threshold_iou=conf.RPN.get_nms_threshold_iou(), 
-                                K=conf.RPN.get_K(),
-                                roi_areas = conf.RPN.get_roi_areas(),
-                                roi_scales = conf.RPN.get_roi_scales()):
+                                K=conf.ROIS.get_K(),
+                                roi_areas = conf.ROIS.get_roi_areas(),
+                                roi_scales = conf.ROIS.get_roi_scales()):
         '''根据模型输出的fmaps生成全部候选框（所有被判定为前景的anchor，过nms）
             @param fmaps: numpy(num, h, w, 6, K)
             @param threshold_prob: 判定为前景的阈值
