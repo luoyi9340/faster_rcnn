@@ -5,7 +5,6 @@
 Created on 2020年12月30日
 '''
 import matplotlib.pyplot as plot
-import matplotlib.patches as mpathes
 from PIL import Image
 import numpy as np
 
@@ -32,7 +31,7 @@ def show_anchors(fa,
     #    打印找到的anchors
     if (is_show_positive):
         print('positives:', len(fa['positives']))
-        for (iou, anchor, label) in fa['positives']:
+        for (_, anchor, label) in fa['positives']:
             rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'red',linewidth=1)
             ax.add_patch(rect)
             pass
@@ -41,7 +40,7 @@ def show_anchors(fa,
     if (is_show_negative):
         print('negative:', len(fa['negative']))
         i = 0
-        for (iou, anchor) in fa['negative']:
+        for (_, anchor) in fa['negative']:
             if (i > count_negative): break;
             i += 1
             rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'green',linewidth=1)

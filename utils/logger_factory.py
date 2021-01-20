@@ -12,6 +12,8 @@ import yaml
 import utils.conf as conf
 
 
+#    取配置文件目录
+LOG_CONF_PATH = conf.ROOT_PATH + "/resources/logs.yml"
 #    日志对象缓存
 LOGS_CACHE = {}
 
@@ -118,12 +120,9 @@ def init_logger_by_name(log_name):
     return log
 
 
-
-#    取配置文件目录
-CONF_PATH = conf.ROOT_PATH + "/resources/logs.yml"
 #    加载logs.yml配置文件
-def load_logs_yaml(yml_fpath=CONF_PATH):
-    print('加载日志配置文件:' + CONF_PATH)
+def load_logs_yaml(yml_fpath=LOG_CONF_PATH):
+    print('加载日志配置文件:' + yml_fpath)
     
     f = open(yml_fpath, 'r', encoding='utf-8')
     fr = f.read()

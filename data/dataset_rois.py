@@ -351,6 +351,7 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                         image_dir=conf.DATASET.get_in_train(), 
                         count_positives=conf.ROIS.get_positives_every_image(),
                         count_negative=conf.ROIS.get_negative_every_image(),
+                        batch_size=16,
                         x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
                         y_preprocess=None):
     '''rpn网络单独训练数据集生成器
@@ -367,11 +368,12 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
         @param rois_out: rois.jsons文件完整路径
         @param is_rois_mutiple_file: rois_jsons是否多文件（多文件会从rois.jsons0开始rois.jsons1，rois.jsons2一直往上遍历，直到遍历不到为止）
         @param image_dir: 图片文件目录
+        @param batch_size: 批量大小（P/N对半）
         @param x_preprocess: x数据预处理（默认归到-1 ~ 1之间）
         @param y_preprocess: y数据预处理
     '''
     label_files = ds.get_fpaths(is_rois_mutiple_file, rois_out)
-
+    
     #    遍历所有文件和所有行
     for fpath in label_files:
         readed = 0
@@ -407,17 +409,24 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 negative = [[a[0]] + a[1] for a in negative]
                 #    补label标签
                 negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
-#                 negative = negative.tolist()
+                negative = negative.tolist()
                 #    如果不足count_negative，用IoU=-1，其他全0补全
                 if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
                 negative = np.array(negative)
+                #    负样本的IoU<0
+                negative[:,0] = - np.abs(negative[:,0])
+#                 y = np.vstack((positives, negative))
+                #    洗牌的方式融合positives, negative
+                y = [np.concatenate([np.expand_dims(p, axis=0), np.expand_dims(n, axis=0)]) for p, n in zip(positives, negative)]
+                y = np.concatenate(y, axis=0)
                 
-                y = np.vstack((positives, negative))
-                #    y数据过前置处理
-                if (y_preprocess is not None): y = y_preprocess(y)
-                
-                yield x, y
+                #    每次返回1个y
+                for y_ in y:
+                    if (y_preprocess): y_ = y_preprocess(y_)
+                    yield x, y_
+                    pass
                 pass
+            
             #    如果循环结束了readed还是==0，说明文件是空的。直接跳出循环
             if (readed == 0): 
                 log.warn('file is empty, %s', fpath)
@@ -435,7 +444,8 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                         batch_size=conf.ROIS.get_batch_size(), 
                         shuffle_buffer_rate=conf.ROIS.get_shuffle_buffer_rate(),
                         epochs=conf.ROIS.get_epochs(),
-                        ymaps_shape=(12, 30, 6, 15),
+#                         ymap_shape=(23, 60, 6, conf.ROIS.get_K()),
+                        ymaps_shape=10,
                         x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
                         y_preprocess=None):
     '''rpn网络单独训练数据集
@@ -479,8 +489,7 @@ def rpn_test_db(image_dir=conf.DATASET.get_in_train(),
                 is_rois_mutiple_file=False,
                 count_positives=conf.ROIS.get_positives_every_image(),
                 count_negative=conf.ROIS.get_negative_every_image(),
-                batch_size=conf.ROIS.get_batch_size(), 
-                ymaps_shape=(12, 30, 6, 15),
+                is_denoise=False,
                 x_preprocess=None, 
                 y_preprocess=None):
     '''
@@ -493,6 +502,7 @@ def rpn_test_db(image_dir=conf.DATASET.get_in_train(),
                                         image_dir=image_dir, 
                                         count_positives=count_positives,
                                         count_negative=count_negative,
+                                        is_denoise=is_denoise,
                                         x_preprocess=x_preprocess, 
                                         y_preprocess=y_preprocess)
     #    全部取出来
@@ -507,23 +517,27 @@ def rpn_test_db(image_dir=conf.DATASET.get_in_train(),
     return X, Y
 
 
-#    根据is_rois_mutiple_file和count取数据总数
-def total_sample(rois_out, is_rois_mutiple_file=False, count=100):
+#    取总anchor数
+def total_anchors(rois_out, 
+                 is_rois_mutiple_file=False, 
+                 count=100,
+                 positives_every_image=64,
+                 negative_every_image=64
+                 ):
     '''根据is_rois_mutiple_file和count取数据总数
-        count = count                  单文件模式
-                count * 文件总数        多文件模式
+        total = 文件数 * 每个文件图片数(count) * 每个图片正负样本数(positives_every_image + negative_every_image)
+        @param rois_out: roi标签文件
         @param is_rois_mutiple_file: 是否多文件模式
         @param count: 单文件总数
-        @param rois_out: roi标签文件
     '''
     #    如果非多文件模式，直接返回count
-    if (not is_rois_mutiple_file): return count
+    if (not is_rois_mutiple_file): return count * (positives_every_image + negative_every_image)
     
     #    多文件模式 count = count * 文件总数
     fcount = 0
     while (os.path.exists(rois_out + str(fcount))):
         fcount += 1
         pass
-    return fcount * count
+    return fcount * count * (positives_every_image + negative_every_image)
 
 

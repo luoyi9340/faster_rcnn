@@ -27,9 +27,9 @@ def preprocess_like_fmaps(y_true,
                             (h, w, 1, k)代表(h,w)点的第k个anchor的背景概率
                         (h, w, 4, K)代表reg结果
                             (h, w, 2, k)代表(h,w)点的第k个anchor的t[x]偏移比
-                            (h, w, 2, k)代表(h,w)点的第k个anchor的t[y]偏移比
-                            (h, w, 2, k)代表(h,w)点的第k个anchor的t[w]缩放比
-                            (h, w, 2, k)代表(h,w)点的第k个anchor的t[h]缩放比
+                            (h, w, 3, k)代表(h,w)点的第k个anchor的t[y]偏移比
+                            (h, w, 4, k)代表(h,w)点的第k个anchor的t[w]缩放比
+                            (h, w, 5, k)代表(h,w)点的第k个anchor的t[h]缩放比
         @param count_positives: y_true中前count_positives个为正样本
         @param count_negative: y_true中后count_negative个负样本
         @return: 与shape形状一致的numpy
@@ -93,8 +93,40 @@ def preprocess_like_fmaps(y_true,
 #     count_p_cls = np.count_nonzero(ymaps[:,:,0,:])
 #     count_p_reg = np.count_nonzero(ymaps[:,:,2:,:])
 #     print(count_p_cls, count_p_reg)
-    
     return ymaps
+
+#    将标签数据整形为需要用到的数据
+def preprocess_like_array(y_true):
+    '''将标签数据整形为需要用到的数据
+        @param y_true: list(14)
+                        [IoU得分(-1说明是填充数据), anchor原图坐标(中心点)宽高, anchor特征图坐标(中心点), anchor面积比宽高比索引, label分类值, label原图坐标(左上点)宽高]
+                        [IoU, x, y, w, h, idx_w, idx_h, idx_area, idx_scales, vcode_index, x(label左上点), y(label左上点), w, h]
+        @param is_p: 是否正样本
+        @return: [IoU得分, idx_w, idx_h, idx_area, idx_scales, 正负样本区分(1 | -1), t[x], t[y], t[w], t[h]]
+    '''
+    Gx = y_true[10] + y_true[12]/2
+    Gy = y_true[11] + y_true[13]/2
+    Gw = y_true[12]
+    Gh = y_true[13]
+    Px = y_true[1]
+    Py = y_true[2]
+    Pw = y_true[3]
+    Ph = y_true[4]
+    #    对于负样本，不需要计算t*
+    if (y_true[0] < 0):
+        tx = 0
+        ty = 0
+        tw = 0
+        th = 0
+        pass
+    #    对于负样本，计算t*
+    else:
+        tx = (Gx - Px) * Pw             #    t[x] = (G[x] - P[x]) * P[w]
+        ty = (Gy - Py) * Ph             #    t[y] = (G[y] - P[y]) * P[h]
+        tw = np.log(Gw) / Pw            #    t[w] = log(G[w] / P[w])
+        th = np.log(Gh) / Ph            #    t[h] = log(G[h] / P[h])
+        pass
+    return np.array([y_true[0], y_true[5], y_true[6], y_true[7], y_true[8], 1 if (y_true[0] > 0) else -1, tx, ty, tw, th])
 
 
 
@@ -109,8 +141,8 @@ def takeout_sample(ytrue_maps, feature_maps):
         @param feature_maps: cnns + rpn输出的特征图
                                 (batch_size, h, w, 6, K)
         return (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p)
-                    (分类正样本的特征图(batch_size, h, w, 2, K)，
-                     分类负样本的特征图(batch_size, h, w, 2, K)，
+                    (分类正样本的特征图(batch_size, h, w, 0, K)，
+                     分类负样本的特征图(batch_size, h, w, 1, K)，
                      回归正样本的特征图(batch_size, h, w, 4, K))
     '''
     #    从6=2+4中切分出分类 / 回归的特征图
@@ -158,6 +190,42 @@ def takeout_sample_np(ytrue_maps, feature_maps):
     ymaps_reg_p = np.where(ytrue_maps_reg > 0, ytrue_maps_reg, zeros_tmp_reg)
     
     return (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p)
+
+#    根据y_true从fmaps中取全部的样本
+def takeout_sample_narray(y_true, fmaps, roi_areas=conf.ROIS.get_roi_areas(), roi_scales=conf.ROIS.get_roi_scales()):
+    '''根据y_true从fmaps中取全部的样本
+        @param y_true: Tensor(batch_size, 10)
+                        [IoU得分(正样本>0，负样本<0), idx_w, idx_h, idx_area, idx_scales, 正负样本区分(1 | -1), t[x], t[y], t[w], t[h]]
+        @param fmaps: Tensor(batch_size, H, W, 6, K)
+                        cnns得到的特征图
+                        (batch_size, H, W, 0, K) 正样本特征图
+                        (batch_size, H, W, 1, K) 负样本特征图
+                        (batch_size, H, W, 4, K) 正样本回归特征图
+                            (batch_size, H, W, 2, K) 正样本d[x]
+                            (batch_size, H, W, 3, K) 正样本d[y]
+                            (batch_size, H, W, 4, K) 正样本d[w]
+                            (batch_size, H, W, 5, K) 正样本d[h]
+        @param roi_areas: 生成anchor时的面积比，用于通过idx_area, idx_scales还原第几个k
+        @param roi_scales: 生成anchor时的长宽比，用于通过idx_area, idx_scales还原第几个k
+        @return anchors
+                    Tensor(num, 7) 每条样本的[±1, 正样本概率，负样本概率，d[x], d[y], d[w], d[h]]
+                    ±1标识是正样本还是负样本
+                    与y_true中的每行一一对应
+    '''
+    #    维度转换(batch_size, H, W, 6, K) -> (batch_size, H, W, K, 6) 每行的6个数据代表[正样本概率，负样本概率，d[x], d[y], d[w], d[h]]
+    fmaps = tf.transpose(fmaps, perm=[0,1,2,4,3])
+    #    取y_true对应的所有样本anchor
+    y_num = tf.math.count_nonzero(y_true[:,0])
+    idx_ = tf.range(y_num, dtype=tf.int32)
+    idx_w = tf.cast(y_true[:, 1], dtype=tf.int32)
+    idx_h = tf.cast(y_true[:, 2], dtype=tf.int32)
+    idx_k = tf.cast(y_true[:, 3] * len(roi_scales) + y_true[:, 4], dtype=tf.int32)
+    idx = tf.stack([idx_, idx_h, idx_w, idx_k], axis=1)
+    anchors = tf.gather_nd(fmaps, idx)
+    pn_tag = tf.reshape(y_true[:,5], shape=(y_num, 1))                      #    正负样本标记：1正样本，-1负样本
+    anchors = tf.concat([pn_tag, anchors], axis=1)                          #    正负样本标记，正样本概率，负样本概率，d[x], d[y], d[w], d[h]
+    
+    return anchors
 
 
 #    从fmaps拿全部判定为正样本的anchor
@@ -243,3 +311,6 @@ def all_positives_from_fmaps(fmaps,
         res.append(as_)
         pass
     return res
+
+
+

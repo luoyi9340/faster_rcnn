@@ -220,7 +220,7 @@ class AModel(metaclass=abc.ABCMeta):
                                                                         factor=0.1,             #    每次减少学习率的因子，学习率将以lr = lr*factor的形式被减少
                                                                         patience=1,             #    当patience个epoch过去而模型性能不提升时，学习率减少的动作会被触发
                                                                         mode='auto',            #    ‘auto’，‘min’，‘max’之一，在min模式下，如果检测值触发学习率减少。在max模式下，当检测值不再上升则触发学习率减少
-                                                                        epsilon=0.00001,        #    阈值，用来确定是否进入检测值的“平原区” 
+                                                                        epsilon=0.000000001,    #    阈值，用来确定是否进入检测值的“平原区” 
                                                                         cooldown=0,             #    学习率减少后，会经过cooldown个epoch才重新进行正常操作
                                                                         min_lr=0                #    学习率的下限（下不封顶）
                                                                         )

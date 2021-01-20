@@ -12,6 +12,9 @@ ROOT_PATH = os.path.abspath(os.path.dirname(__file__)).split('faster_rcnn')[0]
 ROOT_PATH = ROOT_PATH + "faster_rcnn"
 sys.path.append(ROOT_PATH)
 
+import numpy as np
+np.set_printoptions(suppress=True, threshold=16)
+
 import utils.logger_factory as logf
 import utils.conf as conf
 import models.rpn as rpn
@@ -36,7 +39,7 @@ log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(),
 
 #    一些全局参数
 #    单epoch数据总数
-total_sample_train = rois.total_sample(is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
+total_anchors = rois.total_anchors(is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
                                        count=conf.DATASET.get_count_train(), 
                                        rois_out=conf.ROIS.get_train_rois_out())
 batch_size = conf.ROIS.get_batch_size()
@@ -54,9 +57,10 @@ db_train = rois.rpn_train_db(count=conf.DATASET.get_count_train(),
                              shuffle_buffer_rate=conf.ROIS.get_shuffle_buffer_rate(),
                              batch_size=batch_size,
                              epochs=epochs,
-                             ymaps_shape=rpn_model.rpn.get_output_shape(),
+#                              ymaps_shape=rpn_model.rpn.get_output_shape(),
+                             ymaps_shape=10,
                              x_preprocess=None,
-                             y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
+                             y_preprocess=lambda y:preprocess.preprocess_like_array(y))
 log.info('db_train rois finished.')
 log.info('db_train rois image_dir:%s', conf.DATASET.get_in_train())
 log.info('db_train rois rois_out:%s', conf.ROIS.get_train_rois_out())
@@ -73,9 +77,9 @@ db_val = rois.rpn_train_db(count=conf.DATASET.get_count_val(),
                            batch_size=batch_size,
                            shuffle_buffer_rate=-1,
                            epochs=None,
-                           ymaps_shape=rpn_model.rpn.get_output_shape(),
+                           ymaps_shape=10,
                            x_preprocess=None,
-                           y_preprocess=lambda y:preprocess.preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
+                           y_preprocess=lambda y:preprocess.preprocess_like_array(y))
 log.info('db_val rois finished.')
 log.info('db_val rois image_dir:%s', conf.DATASET.get_in_val())
 log.info('db_val rois rois_out:%s', conf.ROIS.get_val_rois_out())
@@ -91,7 +95,7 @@ log.info('rpn_model fitting...')
 rpn_model.train_tensor_db(db_train, db_val, 
                           batch_size=batch_size, 
                           epochs=epochs, 
-                          steps_per_epoch=total_sample_train / batch_size,
+                          steps_per_epoch=total_anchors / batch_size,
                           auto_save_weights_after_traind=True, 
                           auto_save_weights_dir=conf.RPN.get_save_weights_dir(), 
                           auto_learning_rate_schedule=True, 

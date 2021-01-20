@@ -14,38 +14,14 @@ from models.layers.rpn.preprocess import all_positives_from_fmaps, preprocess_li
 np.set_printoptions(suppress=True)     
 
 
-#    验算：preprocess_like_fmaps中t[*]的反向计算应该能还原label的x,y,w,h
-# IoU, x, y, w, h, idx_w, idx_h, idx_area, idx_scales, vcode_index, x, y, w, h
-Y = [
-        [0.9, 10,10,20,20, 0,0,0,0, 1, 11,11,22,22],
-#         [0.9, 20,20,40,40, 0,0,0,0, 1, 21,21,42,42]
-    ]
-Y = np.array(Y)
-Y_maps = preprocess_like_fmaps(Y, shape=(23, 60, 6, 15))
-#    还原label的x,y,w,h
-Tx = Y_maps[:,:, 2, :]
-Tx = Tx[Tx > 0]
-Ty = Y_maps[:,:, 3, :]
-Ty = Ty[Ty > 0]
-Tw = Y_maps[:,:, 4, :]
-Tw = Tw[Tw > 0]
-Th = Y_maps[:,:, 5, :]
-Th = Th[Th > 0]
-Px = Y[:, 1]
-Py = Y[:, 2]
-Pw = Y[:, 3]
-Ph = Y[:, 4]
-#    G[x] = t[x]/P[w] + P[x]
-#    G[y] = t[y]/P[h] + P[y]
-#    G[w] = exp(t[w]) * P[w]
-#    G[h] = exp(t[h]) * P[h]
-Gx = Tx / Pw + Px
-Gy = Ty / Ph + Py
-Gw = np.exp(Tw) * Pw
-Gh = np.exp(Th) * Ph
-print(Gx.shape, Gx - Gw/2)
-print(Gy.shape, Gy - Gh/2)
-print(Gw.shape, Gw)
-print(Gh.shape, Gh)
-
-
+#    融合两个数组
+a = np.array([[1,2,3],
+              [1,2,3],
+              [1,2,3]])
+b = np.array([[4,5,6],
+              [4,5,6],
+              [4,5,6]])
+c = [np.concatenate([np.expand_dims(a_, axis=0), np.expand_dims(b_, axis=0)]) for a_, b_ in zip(a, b)]
+c = np.concatenate(c, axis=0)
+c[:,0] = -c[:,0]
+print(c)
