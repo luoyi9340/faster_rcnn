@@ -105,9 +105,9 @@ rois_creator = rois.RoisCreator()
 file_anchors = rois_creator.test_create(label_file_path=DATASET.get_label_train(), 
 #                                         file_name='159af410-cc08-41a8-8156-c563d831a0d0', 
                                         count=100, 
-                                        train_positives_iou=0.7,
+                                        train_positives_iou=0.725,
                                         train_negative_iou=0.05)
-fa = file_anchors[8]
+fa = file_anchors[4]
 show_anchors(fa, 
              is_show_positive=True, 
              is_show_negative=False, 
