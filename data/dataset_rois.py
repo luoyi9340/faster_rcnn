@@ -399,7 +399,9 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 #    整个拉直成(*, 14)维数组
                 positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
                 #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
-                if (len(positives) < count_positives): positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
+                if (len(positives) < count_positives): 
+                    raise Exception('negative count:' + str(len(positives)) + ' less then count_negative:' + str(positives) + ' file_name:' + file_name)
+#                     positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
                 positives = np.array(positives)
                 
                 #    取负样本，并给每个样本补默认lable，如果不足count_negative，用IoU=-1，其他全0补全
@@ -407,24 +409,22 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 if (len(negative) > count_negative): negative = negative[0: count_negative]
                 #    整个拉直成(*, 9)维数组
                 negative = [[a[0]] + a[1] for a in negative]
-                #    补label标签
+                #    补label标签(负样本的[9]==-1)
                 negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
                 negative = negative.tolist()
                 #    如果不足count_negative，用IoU=-1，其他全0补全
-                if (len(negative) < count_negative): negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
+                if (len(negative) < count_negative): 
+                    raise Exception('negative count:' + str(len(negative)) + ' less then count_negative:' + str(count_negative) + ' file_name:' + file_name)
+#                     negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
                 negative = np.array(negative)
-                #    负样本的IoU<0
-                negative[:,0] = - np.abs(negative[:,0])
+#                 negative[:,0] = -negative[:,0]
 #                 y = np.vstack((positives, negative))
                 #    洗牌的方式融合positives, negative
                 y = [np.concatenate([np.expand_dims(p, axis=0), np.expand_dims(n, axis=0)]) for p, n in zip(positives, negative)]
                 y = np.concatenate(y, axis=0)
+                if (y_preprocess): y = y_preprocess(y)
                 
-                #    每次返回1个y
-                for y_ in y:
-                    if (y_preprocess): y_ = y_preprocess(y_)
-                    yield x, y_
-                    pass
+                yield x, y
                 pass
             
             #    如果循环结束了readed还是==0，说明文件是空的。直接跳出循环
@@ -445,7 +445,7 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                         shuffle_buffer_rate=conf.ROIS.get_shuffle_buffer_rate(),
                         epochs=conf.ROIS.get_epochs(),
 #                         ymap_shape=(23, 60, 6, conf.ROIS.get_K()),
-                        ymaps_shape=10,
+                        ymaps_shape=(conf.ROIS.get_positives_every_image() + conf.ROIS.get_negative_every_image(), 10),
                         x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
                         y_preprocess=None):
     '''rpn网络单独训练数据集

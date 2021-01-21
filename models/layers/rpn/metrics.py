@@ -10,7 +10,7 @@ import numpy as np
 np.set_printoptions(suppress=True, threshold=np.inf)
 
 import utils.logger_factory as logf
-from models.layers.rpn.preprocess import takeout_sample_narray
+from models.layers.rpn.preprocess import takeout_sample_array
 
 
 #    分类评价函数
@@ -36,18 +36,18 @@ class RPNMetricCls(tf.keras.metrics.Metric):
             @param fmaps_cls_n: 负样本预测
             @return: (TP, TN, FP, FN, P, N)
         '''
-        #    正负样本
-        anchors_p = anchors[anchors[:,0] > 0]
-        anchors_n = anchors[anchors[:,0] < 0]
+        anchors_p = anchors[anchors[:,:,0] > 0]
+        anchors_n = anchors[anchors[:,:,0] < 0]
         #    正负样本总数
-        P = tf.math.count_nonzero(anchors_p[:,0])
-        N = tf.math.count_nonzero(anchors_n[:,0])
+        P = tf.cast(tf.math.count_nonzero(anchors_p[:,0]), dtype=tf.float32) 
+        N = tf.cast(tf.math.count_nonzero(anchors_n[:,0]), dtype=tf.float32) 
         #    各种数据
-        TP = tf.math.count_nonzero(anchors_p[:,1] > 0.5)                #    正样本 的 正样本概率>0.5 即为正样本分类正确
-        FN = tf.math.count_nonzero(anchors_p[:,2] > 0.5)                #    正样本 的 负样本概率>0.5 即为正样本分类错误
-        TN = tf.math.count_nonzero(anchors_n[:,2] > 0.5)                #    负样本 的 负样本概率>0.5 即为负样本分类正确
-        FP = tf.math.count_nonzero(anchors_n[:,1] > 0.5)                #    负样本 的 正样本概率>0.5 即为负样本分类错误
+        TP = tf.math.count_nonzero(anchors_p[:,1] > 0.5, dtype=tf.float32)                #    正样本 的 正样本概率>0.5 即为正样本分类正确
+        FN = tf.math.count_nonzero(anchors_p[:,2] > 0.5, dtype=tf.float32)                #    正样本 的 负样本概率>0.5 即为正样本分类错误
+        TN = tf.math.count_nonzero(anchors_n[:,2] > 0.5, dtype=tf.float32)                #    负样本 的 负样本概率>0.5 即为负样本分类正确
+        FP = tf.math.count_nonzero(anchors_n[:,1] > 0.5, dtype=tf.float32)                #    负样本 的 正样本概率>0.5 即为负样本分类错误
         return (TP, TN, FP, FN, P, N)
+        
     def update_state(self, y_true, y_pred, sample_weight=None):
         '''
             @param y_true: [y_true, y_true...]
@@ -65,7 +65,7 @@ class RPNMetricCls(tf.keras.metrics.Metric):
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
         
-        anchors = takeout_sample_narray(y_true, y_pred)
+        anchors = takeout_sample_array(y_true, y_pred)
         (tp, tn, fp, fn, p, n) = self.tp_tn_fp_tf_p_n(anchors)
         
         total = tf.math.add(p, n)
@@ -102,8 +102,8 @@ class RPNMetricReg(tf.keras.metrics.Metric):
             @param ymaps_cls_p: 标签的正样本前景概率
         '''
         #    取正样本
-        anchors_p = anchors[anchors[:,0] > 0]
-        y_true_p = y_true[y_true[:,0] > 0]
+        anchors_p = anchors[anchors[:,:,0] > 0]
+        y_true_p = y_true[y_true[:,:,5] > 0]
         dx = anchors_p[:, 3]
         dy = anchors_p[:, 4]
         dw = anchors_p[:, 5]
@@ -146,7 +146,7 @@ class RPNMetricReg(tf.keras.metrics.Metric):
                                 (batch_size, h, w, 2, K)代表每个点的x缩放，K的顺序为area * scales
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
-        anchors = takeout_sample_narray(y_true, y_pred)
+        anchors = takeout_sample_array(y_true, y_pred)
         
         mae = self.mean_abs_error(y_true, anchors)
         self.mae.assign(mae)

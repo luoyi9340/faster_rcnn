@@ -98,35 +98,36 @@ def preprocess_like_fmaps(y_true,
 #    将标签数据整形为需要用到的数据
 def preprocess_like_array(y_true):
     '''将标签数据整形为需要用到的数据
-        @param y_true: list(14)
-                        [IoU得分(-1说明是填充数据), anchor原图坐标(中心点)宽高, anchor特征图坐标(中心点), anchor面积比宽高比索引, label分类值, label原图坐标(左上点)宽高]
-                        [IoU, x, y, w, h, idx_w, idx_h, idx_area, idx_scales, vcode_index, x(label左上点), y(label左上点), w, h]
+        @param y_true: numpy (positives_every_image+negative_every_image, 14)
+                        [
+                            [IoU得分, anchor原图坐标(中心点)宽高, anchor特征图坐标(中心点), anchor面积比宽高比索引, label分类值, label原图坐标(左上点)宽高]
+                            [IoU, x, y, w, h, idx_w, idx_h, idx_area, idx_scales, vcode_index, x(label左上点), y(label左上点), w, h]
+                            ...
+                        ]
         @param is_p: 是否正样本
         @return: [IoU得分, idx_w, idx_h, idx_area, idx_scales, 正负样本区分(1 | -1), t[x], t[y], t[w], t[h]]
     '''
-    Gx = y_true[10] + y_true[12]/2
-    Gy = y_true[11] + y_true[13]/2
-    Gw = y_true[12]
-    Gh = y_true[13]
-    Px = y_true[1]
-    Py = y_true[2]
-    Pw = y_true[3]
-    Ph = y_true[4]
+    Gx = y_true[:,10] + y_true[:,12]/2
+    Gy = y_true[:,11] + y_true[:,13]/2
+    Gw = y_true[:,12]
+    Gh = y_true[:,13]
+    Px = y_true[:,1]
+    Py = y_true[:,2]
+    Pw = y_true[:,3]
+    Ph = y_true[:,4]
     #    对于负样本，不需要计算t*
-    if (y_true[0] < 0):
-        tx = 0
-        ty = 0
-        tw = 0
-        th = 0
-        pass
-    #    对于负样本，计算t*
-    else:
-        tx = (Gx - Px) * Pw             #    t[x] = (G[x] - P[x]) * P[w]
-        ty = (Gy - Py) * Ph             #    t[y] = (G[y] - P[y]) * P[h]
-        tw = np.log(Gw) / Pw            #    t[w] = log(G[w] / P[w])
-        th = np.log(Gh) / Ph            #    t[h] = log(G[h] / P[h])
-        pass
-    return np.array([y_true[0], y_true[5], y_true[6], y_true[7], y_true[8], 1 if (y_true[0] > 0) else -1, tx, ty, tw, th])
+    idx_p = y_true[:,9] > 0
+    zero_tmp = np.zeros_like(Gx)
+    tx = np.where(idx_p, (Gx - Px) * Pw, zero_tmp)                      #    t[x] = (G[x] - P[x]) * P[w]
+    ty = np.where(idx_p, (Gy - Py) * Ph, zero_tmp)                      #    t[y] = (G[y] - P[y]) * P[h]
+    tw = np.where(idx_p, np.log(Gw / Pw) , zero_tmp)                     #    t[w] = log(G[w] / P[w])
+    th = np.where(idx_p, np.log(Gh / Ph) , zero_tmp)                     #    t[h] = log(G[h] / P[h])
+    #    计算正负样本标记
+    one_tmp = np.ones_like(Gx)
+    minus_tmp = -one_tmp
+    pn_tag = np.where(idx_p, one_tmp, minus_tmp)
+    y_true = np.vstack([y_true[:,0], y_true[:,5], y_true[:,6], y_true[:,7], y_true[:,8], pn_tag, tx, ty, tw, th]).T
+    return y_true
 
 
 
@@ -192,9 +193,9 @@ def takeout_sample_np(ytrue_maps, feature_maps):
     return (fmaps_cls_p, fmaps_cls_n, fmaps_reg_p), (ymaps_cls_p, ymaps_cls_n, ymaps_reg_p)
 
 #    根据y_true从fmaps中取全部的样本
-def takeout_sample_narray(y_true, fmaps, roi_areas=conf.ROIS.get_roi_areas(), roi_scales=conf.ROIS.get_roi_scales()):
+def takeout_sample_array(y_true, fmaps, roi_areas=conf.ROIS.get_roi_areas(), roi_scales=conf.ROIS.get_roi_scales()):
     '''根据y_true从fmaps中取全部的样本
-        @param y_true: Tensor(batch_size, 10)
+        @param y_true: Tensor(batch_size, num, 10)
                         [IoU得分(正样本>0，负样本<0), idx_w, idx_h, idx_area, idx_scales, 正负样本区分(1 | -1), t[x], t[y], t[w], t[h]]
         @param fmaps: Tensor(batch_size, H, W, 6, K)
                         cnns得到的特征图
@@ -208,22 +209,25 @@ def takeout_sample_narray(y_true, fmaps, roi_areas=conf.ROIS.get_roi_areas(), ro
         @param roi_areas: 生成anchor时的面积比，用于通过idx_area, idx_scales还原第几个k
         @param roi_scales: 生成anchor时的长宽比，用于通过idx_area, idx_scales还原第几个k
         @return anchors
-                    Tensor(num, 7) 每条样本的[±1, 正样本概率，负样本概率，d[x], d[y], d[w], d[h]]
-                    ±1标识是正样本还是负样本
-                    与y_true中的每行一一对应
+                    Tensor(batch_size, num, 7) 
+                        最后7维解释：[±1, 正样本概率，负样本概率，d[x], d[y], d[w], d[h]]
+                                    ±1标识是正样本还是负样本
+                                    与y_true中的每行一一对应
     '''
     #    维度转换(batch_size, H, W, 6, K) -> (batch_size, H, W, K, 6) 每行的6个数据代表[正样本概率，负样本概率，d[x], d[y], d[w], d[h]]
     fmaps = tf.transpose(fmaps, perm=[0,1,2,4,3])
-    #    取y_true对应的所有样本anchor
-    y_num = tf.math.count_nonzero(y_true[:,0])
-    idx_ = tf.range(y_num, dtype=tf.int32)
-    idx_w = tf.cast(y_true[:, 1], dtype=tf.int32)
-    idx_h = tf.cast(y_true[:, 2], dtype=tf.int32)
-    idx_k = tf.cast(y_true[:, 3] * len(roi_scales) + y_true[:, 4], dtype=tf.int32)
-    idx = tf.stack([idx_, idx_h, idx_w, idx_k], axis=1)
-    anchors = tf.gather_nd(fmaps, idx)
-    pn_tag = tf.reshape(y_true[:,5], shape=(y_num, 1))                      #    正负样本标记：1正样本，-1负样本
-    anchors = tf.concat([pn_tag, anchors], axis=1)                          #    正负样本标记，正样本概率，负样本概率，d[x], d[y], d[w], d[h]
+    #    根据y_true从fmaps中生成anchors[batch_size=None, num=正负样本数, 7]
+    num_every_b = tf.math.count_nonzero(y_true[:,:,0], axis=1)                  #    每个batch的样本数。其实不用取，每个batch的样本数应该都是每张图的正负样本数之和
+    num_b = tf.math.count_nonzero(num_every_b)                                  #    总batch数
+    idx_ = tf.range(num_b, dtype=tf.int32)
+    idx_ = tf.repeat(tf.expand_dims(idx_, axis=-1), repeats=num_every_b[0], axis=1)
+    idx_w = tf.cast(y_true[:,:, 1], dtype=tf.int32)
+    idx_h = tf.cast(y_true[:,:, 2], dtype=tf.int32)
+    idx_k = tf.cast(y_true[:,:, 3] * len(roi_scales) + y_true[:,:, 4], dtype=tf.int32)
+    np_tag = tf.cast(y_true[:,:, 5], dtype=tf.float32)
+    idx = tf.stack([idx_, idx_h, idx_w, idx_k], axis=2)
+    anchors = tf.gather_nd(fmaps, idx)    
+    anchors = tf.concat([tf.expand_dims(np_tag, axis=-1), anchors], axis=2)
     
     return anchors
 
@@ -277,7 +281,6 @@ def all_positives_from_fmaps(fmaps,
     
     #    根据idx_h,idx_w(相对于特征图), idx_anchor 和 d[x],d[y],d[w],d[h] 换算出原图坐标
     #    特征图每个像素点对应原图中心点坐标 = (特征图坐标x * 缩放比例 + 缩放比例/2, 特征图坐标y * 缩放比例 + 缩放比例/2)
-    
     xc, yc = fmaps[:, :,:, :, 6] * feature_map_scaling + feature_map_scaling/2, fmaps[:, :,:, :, 5].astype(np.int8) * feature_map_scaling + feature_map_scaling/2
     #    根据idx_anchor计算每个anchor的宽高
     idx_areas = (fmaps[:, :,:, :, 7] / len(roi_scales)).astype(np.int8)
@@ -285,10 +288,10 @@ def all_positives_from_fmaps(fmaps,
     w = np.round(roi_areas[idx_areas] * roi_scales[idx_scales]).astype(np.float64)
     h = np.round(roi_areas[idx_areas] / roi_scales[idx_scales]).astype(np.float64)
     #    根据d[x], d[y], d[w], d[h]换算中心坐标和宽高
-    xc = fmaps[:, :,:, :, 1] / w + xc                               #    G_[x] = d[x]/P[w] + P[x]
-    yc = fmaps[:, :,:, :, 2] / h + yc                               #    G_[y] = d[y]/P[h] + P[y]
-    w = np.exp(fmaps[:, :,:, :, 3]).astype(np.float64) * w                             #    G_[w] = exp(d[w]) * P[w]
-    h = np.exp(fmaps[:, :,:, :, 4]).astype(np.float64) * h                             #    G_[h] = exp(d[h]) * P[h]
+    xc = fmaps[:, :,:, :, 1] / w + xc                                           #    G_[x] = d[x]/P[w] + P[x]
+    yc = fmaps[:, :,:, :, 2] / h + yc                                           #    G_[y] = d[y]/P[h] + P[y]
+    w = np.exp(fmaps[:, :,:, :, 3]).astype(np.float64) * w                      #    G_[w] = exp(d[w]) * P[w]
+    h = np.exp(fmaps[:, :,:, :, 4]).astype(np.float64) * h                      #    G_[h] = exp(d[h]) * P[h]
     xl, yl = (xc - w/2).astype(np.int16), (yc - h/2).astype(np.int16)                                     #    左上点坐标 = (xc - w/2, yc - h/2)
     xr, yr = (xc + w/2).astype(np.int16), (yc + h/2).astype(np.int16)                                     #    右下点坐标 = (xc + w/2, yc + h/2)
     #    拼接后anchors.shape=(batch_size, h, w, k, 5)

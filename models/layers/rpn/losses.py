@@ -10,7 +10,7 @@ import tensorflow as tf
 import utils.conf as conf
 import utils.math_expand as me
 import utils.logger_factory as logf
-from models.layers.rpn.preprocess import takeout_sample_narray
+from models.layers.rpn.preprocess import takeout_sample_array
 
 
 #    RPN网络的损失
@@ -57,9 +57,10 @@ class RPNLoss(tf.keras.losses.Loss):
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
         '''
         tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('rpn_loss'))
-        anchors = takeout_sample_narray(y_true, y_pred)
+        anchors = takeout_sample_array(y_true, y_pred)
         loss = self.loss_cls(anchors) + self.__loss_lamda * self.loss_reg(anchors, y_true)
-        
+        #    无脑sum
+        loss = tf.reduce_sum(loss)
         tf.print('loss:', loss, output_stream=logf.get_logger_filepath('rpn_loss'))
         return loss
     
@@ -73,8 +74,9 @@ class RPNLoss(tf.keras.losses.Loss):
                 对于负样本：loss = 1/N[n] Σ(i=-1>N[n]) (-log((1 - p_pred[i]) * (1 - p_true[i])))
         '''
         #    取需要计算的各自概率（正样本取[:,1]，负样本[:,2]）
-        loss_d = tf.where(anchors[:,0] > 0, anchors[:,1], anchors[:,2])
+        loss_d = tf.where(anchors[:,:,0] > 0, anchors[:,:,1], anchors[:,:,2])
         loss_cls = -1 * tf.math.log(loss_d)
+        loss_cls = tf.reduce_mean(loss_cls, axis=1)
         
         tf.print('loss_cls:', loss_cls, output_stream=logf.get_logger_filepath('rpn_loss'))
         return loss_cls
@@ -117,20 +119,29 @@ class RPNLoss(tf.keras.losses.Loss):
                      G_[h]为预测框高度
         '''
         zero_tmp = tf.zeros_like(anchors)
-        idx_p = y_true[:,0] > 0
-        dx = tf.where(idx_p, anchors[:, 3], zero_tmp[:, 3])
-        dy = tf.where(idx_p, anchors[:, 4], zero_tmp[:, 4])
-        dw = tf.where(idx_p, anchors[:, 5], zero_tmp[:, 5])
-        dh = tf.where(idx_p, anchors[:, 6], zero_tmp[:, 6])
-        tx = tf.where(idx_p, y_true[:, 6], zero_tmp[:, 3])
-        ty = tf.where(idx_p, y_true[:, 7], zero_tmp[:, 4])
-        tw = tf.where(idx_p, y_true[:, 8], zero_tmp[:, 5])
-        th = tf.where(idx_p, y_true[:, 9], zero_tmp[:, 6])
+        idx_p = y_true[:,:,0] > 0
+        #    每个batch的正样本数，其实不用取，肯定==正负样本数之和
+        count_p = tf.cast(tf.math.count_nonzero(idx_p, axis=1), dtype=tf.float32)                  
+        #    取d[*], t[*]
+        dx = tf.where(idx_p, anchors[:,:, 3], zero_tmp[:,:, 3])
+        dy = tf.where(idx_p, anchors[:,:, 4], zero_tmp[:,:, 4])
+        dw = tf.where(idx_p, anchors[:,:, 5], zero_tmp[:,:, 5])
+        dh = tf.where(idx_p, anchors[:,:, 6], zero_tmp[:,:, 6])
+        tx = tf.where(idx_p, y_true[:,:, 6], zero_tmp[:,:, 3])
+        ty = tf.where(idx_p, y_true[:,:, 7], zero_tmp[:,:, 4])
+        tw = tf.where(idx_p, y_true[:,:, 8], zero_tmp[:,:, 5])
+        th = tf.where(idx_p, y_true[:,:, 9], zero_tmp[:,:, 6])
+        #    计算1/Nreg * smootL1(t[*] - d[*])
         loss_x = me.smootL1_tf(tf.math.subtract(tx, dx))
+        loss_x = tf.divide(tf.reduce_sum(loss_x, axis=1), count_p)
         loss_y = me.smootL1_tf(tf.math.subtract(ty, dy))
+        loss_y = tf.divide(tf.reduce_sum(loss_y, axis=1), count_p)
         loss_w = me.smootL1_tf(tf.math.subtract(tw, dw))
+        loss_w = tf.divide(tf.reduce_sum(loss_w, axis=1), count_p)
         loss_h = me.smootL1_tf(tf.math.subtract(th, dh))
-        loss_reg = tf.math.reduce_sum([loss_x, loss_y, loss_w, loss_h], axis=0)
+        loss_h = tf.divide(tf.reduce_sum(loss_h, axis=1), count_p)
+        #    batch求和
+        loss_reg = tf.reduce_sum([loss_x, loss_y, loss_w, loss_h], axis=0)
         
         tf.print('loss_x:', loss_x, output_stream=logf.get_logger_filepath('rpn_loss'))
         tf.print('loss_y:', loss_y, output_stream=logf.get_logger_filepath('rpn_loss'))
