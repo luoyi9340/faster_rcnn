@@ -78,7 +78,7 @@ db_val = rois.rpn_train_db(count=conf.DATASET.get_count_val(),
                            shuffle_buffer_rate=-1,
                            epochs=None,
                            ymaps_shape=(conf.ROIS.get_positives_every_image() + conf.ROIS.get_negative_every_image(), 10),
-                           x_preprocess=None,
+                           x_preprocess=lambda x:((x / 255.) - 0.5) * 2,
                            y_preprocess=lambda y:preprocess.preprocess_like_array(y))
 log.info('db_val rois finished.')
 log.info('db_val rois image_dir:%s', conf.DATASET.get_in_val())
@@ -91,11 +91,13 @@ rpn_model.show_info()
 
 
 log.info('rpn_model fitting...')
+steps_per_epoch = total_anchors / batch_size
+if (total_anchors % batch_size > 0): steps_per_epoch += 1
 #    喂数据
 rpn_model.train_tensor_db(db_train, db_val, 
                           batch_size=batch_size, 
                           epochs=epochs, 
-                          steps_per_epoch=total_anchors / batch_size,
+                          steps_per_epoch=steps_per_epoch,
                           auto_save_weights_after_traind=True, 
                           auto_save_weights_dir=conf.RPN.get_save_weights_dir(), 
                           auto_learning_rate_schedule=True, 

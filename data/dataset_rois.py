@@ -47,7 +47,11 @@ class RoisCreator():
         pass
     
     #    从单文件中读取标签并操作
-    def __create_from_file(self, label_file_path, count, rois_out, log_interval=100, thread_name='thread0'):
+    def __create_from_file(self, label_file_path, count, rois_out, 
+                           log_interval=100, 
+                           thread_name='thread0', 
+                           count_positives=conf.ROIS.get_positives_every_image(), 
+                           count_negative=conf.ROIS.get_negative_every_image()):
         '''从单文件中读取标签并操作
             @param fpath: 标签文件路径
             @param count: 每个文件读取记录数
@@ -62,6 +66,19 @@ class RoisCreator():
         num = 0
         for file_name, vcode, labels in label_iterator:
             anchors = self.__create_anchors(file_name, vcode, labels, self.__train_positives_iou, self.__train_negative_iou)
+            
+            #    如果正负样本数达不到要求则放弃此图
+            if (len(anchors['positives']) < count_positives \
+                or len(anchors['negative']) < count_negative):
+                log.warn('anchor.count less then conf(%d, %d). file_name:%s, positives.count:%d, negative.count:%d', 
+                         count_positives, 
+                         count_negative,
+                         file_name,
+                         len(anchors['positives']),
+                         len(anchors['negative']))
+                continue
+                pass
+            
             
             j = json.dumps(anchors)
             fw.write(j + "\n")
@@ -85,7 +102,9 @@ class RoisCreator():
                count=conf.DATASET.get_count_train(),
                log_interval=100,
                label_mutiple=False,
-               max_workers=-1):
+               max_workers=-1,
+               count_positives=conf.ROIS.get_positives_every_image(),
+               count_negative=conf.ROIS.get_negative_every_image()):
         '''生成rois
             @param label_file_path: 标签文件完整路径
             @param rois_out: rois.jsons输出目录
@@ -103,7 +122,12 @@ class RoisCreator():
             for fpath in label_files:
                 rois_out_fpath = rois_out
                 if (len(label_files) > 1): rois_out_fpath = rois_out + str(idx)
-                (num_a, num_p, num_n) = self.__create_from_file(fpath, count, rois_out_fpath, log_interval)
+                (num_a, num_p, num_n) = self.__create_from_file(label_file_path=fpath, 
+                                                                count=count, 
+                                                                rois_out=rois_out_fpath, 
+                                                                log_interval=log_interval, 
+                                                                count_positives=count_positives, 
+                                                                count_negative=count_negative)
                 num_labels += num_a
                 num_positives += num_p
                 num_negative += num_n
@@ -118,7 +142,7 @@ class RoisCreator():
                 label_fpath = label_file_path + str(idx)
                 thread_name = 'thread' + str(idx)
                 thread_rois_out = rois_out + str(idx)
-                future = threadPool.submit(self.__create_from_file, label_fpath, count, thread_rois_out, log_interval, thread_name)
+                future = threadPool.submit(self.__create_from_file, label_fpath, count, thread_rois_out, log_interval, thread_name, count_positives, count_negative)
                 futures.append(future)
                 idx += 1
                 pass
@@ -148,6 +172,7 @@ class RoisCreator():
             if (file_name is not None and fname != file_name): continue
             anchors = self.__create_anchors(fname, vcode, labels, train_positives_iou, train_negative_iou)
             file_anchors.append(anchors)
+            if (file_name is not None): break
             pass
         return file_anchors
     #    根据比例对label中的值进行压缩
@@ -400,7 +425,7 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
                 #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
                 if (len(positives) < count_positives): 
-                    raise Exception('negative count:' + str(len(positives)) + ' less then count_negative:' + str(positives) + ' file_name:' + file_name)
+                    raise Exception('positives count:' + str(len(positives)) + ' less then count_negative:' + str(count_positives) + ' file_name:' + file_name)
 #                     positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
                 positives = np.array(positives)
                 

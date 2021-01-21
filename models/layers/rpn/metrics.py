@@ -72,6 +72,7 @@ class RPNMetricCls(tf.keras.metrics.Metric):
         t = tf.math.add(tp, tn)
         acc = tf.math.divide(t, total)
         acc = tf.cast(acc, dtype=tf.float32)
+        tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('rpn_metric'))
         tf.print('acc:', acc, ' t(tp+tn):', t, ' total(p+n):', total, ' tp:', tp, ' tn:', tn, ' fp:', fp, ' fn:', fn, ' p:', p, ' n:', n, output_stream=logf.get_logger_filepath('rpn_metric'))
         self.acc.assign(acc)
         pass

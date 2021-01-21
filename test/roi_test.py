@@ -4,6 +4,13 @@
 @author: luoyi
 Created on 2020年12月30日
 '''
+import sys
+import os
+#    取项目根目录
+ROOT_PATH = os.path.abspath(os.path.dirname(__file__)).split('faster_rcnn')[0]
+ROOT_PATH = ROOT_PATH + "faster_rcnn"
+sys.path.append(ROOT_PATH)
+
 import matplotlib.pyplot as plot
 from PIL import Image
 import numpy as np
@@ -102,15 +109,15 @@ def show_msg(anchors_iterator):
 
 rois_creator = rois.RoisCreator()
 # rois_creator.create()
-file_anchors = rois_creator.test_create(label_file_path=DATASET.get_label_train(), 
-#                                         file_name='159af410-cc08-41a8-8156-c563d831a0d0', 
-                                        count=100, 
+file_anchors = rois_creator.test_create(label_file_path='/Users/irenebritney/Desktop/vcode/dataset_server/num_letter/train.jsons', 
+                                        file_name='8eb20dd1-0333-43ff-8e5a-61cd3d9d9573', 
+                                        count=10000, 
                                         train_positives_iou=0.725,
                                         train_negative_iou=0.05)
-fa = file_anchors[4]
+fa = file_anchors[0]
 show_anchors(fa, 
              is_show_positive=True, 
-             is_show_negative=False, 
+             is_show_negative=True, 
              is_show_labels=True, 
              is_show_anchors=False,
              is_show_anchors_center=False)
