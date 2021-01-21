@@ -479,7 +479,7 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
         db = db.shuffle(buffer_size=shuffle_buffer_rate * batch_size)
         pass
     if (batch_size): db = db.batch(batch_size)
-    if (epochs): db= db.repeat(epochs)
+    if (epochs): db = db.repeat(epochs)
     return db
 
 #    rpn网络测试数据集（只能跑测试集的分类ACC和回归MAE）
@@ -531,13 +531,13 @@ def total_anchors(rois_out,
         @param count: 单文件总数
     '''
     #    如果非多文件模式，直接返回count
-    if (not is_rois_mutiple_file): return count * (positives_every_image + negative_every_image)
+    if (not is_rois_mutiple_file): return count
     
     #    多文件模式 count = count * 文件总数
     fcount = 0
     while (os.path.exists(rois_out + str(fcount))):
         fcount += 1
         pass
-    return fcount * count * (positives_every_image + negative_every_image)
+    return fcount * count
 
 

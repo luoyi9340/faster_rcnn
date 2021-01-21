@@ -59,8 +59,8 @@ class RPNLoss(tf.keras.losses.Loss):
         tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('rpn_loss'))
         anchors = takeout_sample_array(y_true, y_pred)
         loss = self.loss_cls(anchors) + self.__loss_lamda * self.loss_reg(anchors, y_true)
-        #    无脑sum
-        loss = tf.reduce_mean(loss)
+#         #    无脑mean
+#         loss = tf.reduce_mean(loss)
         tf.print('loss:', loss, output_stream=logf.get_logger_filepath('rpn_loss'))
         return loss
     
