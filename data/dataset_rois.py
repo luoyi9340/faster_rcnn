@@ -284,8 +284,6 @@ class RoisCreator():
         area_intersection = math.fabs(arr_x[1] - arr_x[2]) * math.fabs(arr_y[1] - arr_y[2])
         #    计算并集面积
         area_union = label_w * label_h + anchor_w * anchor_h - area_intersection
-        if (area_union == 0):
-            print(area_union)
         return area_intersection / area_union
     
     
@@ -423,10 +421,8 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 if (len(positives) > count_positives): positives = positives[0: count_positives]
                 #    整个拉直成(*, 14)维数组
                 positives = [[a[0]] + a[1] + [alphabet.category_index(a[2][0])] + a[2][1:] for a in positives]
-                #    如果不足如果不足count_positives，用IoU=-1，其他全0补全
-                if (len(positives) < count_positives): 
-                    raise Exception('positives count:' + str(len(positives)) + ' less then count_negative:' + str(count_positives) + ' file_name:' + file_name)
-#                     positives = positives + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_positives - len(positives))]
+                #    验算：正样本个数不能少于count_positives
+                assert (len(positives) >= count_positives), 'positives count:' + str(len(positives)) + ' less then count_positives:' + str(count_positives) + ' file_name:' + file_name
                 positives = np.array(positives)
                 
                 #    取负样本，并给每个样本补默认lable，如果不足count_negative，用IoU=-1，其他全0补全
@@ -437,16 +433,15 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 #    补label标签(负样本的[9]==-1)
                 negative = np.c_[negative, [[-1, 0,0,0,0] for _ in range(len(negative))]]
                 negative = negative.tolist()
-                #    如果不足count_negative，用IoU=-1，其他全0补全
-                if (len(negative) < count_negative): 
-                    raise Exception('negative count:' + str(len(negative)) + ' less then count_negative:' + str(count_negative) + ' file_name:' + file_name)
-#                     negative = negative + [[-1, 0,0,0,0,0,0,0,0, -1,0,0,0,0] for _ in range(count_negative - len(positives))]
+                #    验算：负样本个数不应该 < count_negative
+                assert (len(negative) >= count_negative), 'negative count:' + str(len(negative)) + ' less then count_negative:' + str(count_negative) + ' file_name:' + file_name
                 negative = np.array(negative)
-#                 negative[:,0] = -negative[:,0]
-#                 y = np.vstack((positives, negative))
                 #    洗牌的方式融合positives, negative
                 y = [np.concatenate([np.expand_dims(p, axis=0), np.expand_dims(n, axis=0)]) for p, n in zip(positives, negative)]
                 y = np.concatenate(y, axis=0)
+                
+                #    验算：y.shape[0]应该 == count_positives + count_negative
+                assert (y.shape[0] == count_positives + count_negative), 'y.shape[0]:{} not equal count_positives+count_negative:{}'.format(y.shape[0], count_positives + count_negative)
                 if (y_preprocess): y = y_preprocess(y)
                 
                 yield x, y

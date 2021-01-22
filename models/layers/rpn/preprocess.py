@@ -116,7 +116,7 @@ def preprocess_like_array(y_true):
     Pw = y_true[:,3]
     Ph = y_true[:,4]
     #    对于负样本，不需要计算t*
-    idx_p = y_true[:,9] > 0
+    idx_p = y_true[:,9] >= 0
     zero_tmp = np.zeros_like(Gx)
     tx = np.where(idx_p, (Gx - Px) * Pw, zero_tmp)                      #    t[x] = (G[x] - P[x]) * P[w]
     ty = np.where(idx_p, (Gy - Py) * Ph, zero_tmp)                      #    t[y] = (G[y] - P[y]) * P[h]

@@ -26,13 +26,13 @@ rois:
    #   判定为负样本的iou比率（与所有label的IOU都小于该值）
    negative_iou: 0.3
    #   每张图片多少个正样本（超过的IoU降序取前多少个，不够的补IoU=-1的数据，注：该数量必须<=实际的正样本数）
-   positives_every_image: 64
+   positives_every_image: 32
    #   每张图片多少个负样本（不够的补IoU=-1的数据，注：该数量必须<=实际的正样本数）
-   negative_every_image: 64
+   negative_every_image: 32
    #   打乱数据的buffer_size是batch_size的多少倍. < 0表示不做打乱
    shuffle_buffer_rate: -1
    #   训练时每次取多少个样本，总样本数一定要是他的整数倍(RepeatDataset处理不了每轮epoch尾数不足的问题)
-   batch_size: 2
+   batch_size: 4
    #   训练多少个epochs
    epochs: 2
    #   每张图片生成的用于训练的roi矩形框信息（每个图片一个json，包含图片的roi矩形框）

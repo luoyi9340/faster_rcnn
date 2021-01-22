@@ -59,7 +59,7 @@ db_train = rois.rpn_train_db(count=conf.DATASET.get_count_train(),
                              epochs=epochs,
 #                              ymaps_shape=rpn_model.rpn.get_output_shape(),
                              ymaps_shape=(conf.ROIS.get_positives_every_image() + conf.ROIS.get_negative_every_image(), 10),
-                             x_preprocess=None,
+                             x_preprocess=lambda x:((x / 255.) - 0.5) * 2,
                              y_preprocess=lambda y:preprocess.preprocess_like_array(y))
 log.info('db_train rois finished.')
 log.info('db_train rois image_dir:%s', conf.DATASET.get_in_train())
