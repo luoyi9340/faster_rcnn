@@ -85,7 +85,7 @@ class RPNLoss(tf.keras.losses.Loss):
     def loss_reg(self, anchors, y_true):
         '''smoothL1 损失
             @param fmaps_p: Tensor (num, 6) 每条正样本的[正样本概率，负样本概率，d[x], d[y], d[w], d[h]]
-            @param y_true: Tensor (batch_size) [IoU得分(正样本>0，负样本<0), idx_w, idx_h, idx_area, idx_scales, 正负样本区分(1 | -1), t[x], t[y], t[w], t[h]]
+            @param y_true: Tensor (batch_size, num, 10) [IoU得分(正样本>0，负样本<0), idx_w, idx_h, idx_area, idx_scales, 正负样本区分(1 | -1), t[x], t[y], t[w], t[h]]
             loss_reg = ∑(j=[x,y,w,h]) 1/N[p] * ∑(i=1->N[p]) smoothL1(t[j] - d[j])
                      = ∑(i=1->N[p]) smoothL1(t[x] - d[x])
                          +
@@ -119,8 +119,8 @@ class RPNLoss(tf.keras.losses.Loss):
                      G_[h]为预测框高度
         '''
         zero_tmp = tf.zeros_like(anchors)
-        idx_p = y_true[:,:,0] > 0
-        #    每个batch的正样本数，其实不用取，肯定==正负样本数之和
+        idx_p = y_true[:,:,5] > 0
+        #    每个batch的正样本数，其实不用取，肯定==配置给的正样本数
         count_p = tf.cast(tf.math.count_nonzero(idx_p, axis=1), dtype=tf.float32)                  
         #    取d[*], t[*]
         dx = tf.where(idx_p, anchors[:,:, 3], zero_tmp[:,:, 3])

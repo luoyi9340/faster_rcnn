@@ -509,7 +509,6 @@ def rpn_test_db(image_dir=conf.DATASET.get_in_train(),
                 is_rois_mutiple_file=False,
                 count_positives=conf.ROIS.get_positives_every_image(),
                 count_negative=conf.ROIS.get_negative_every_image(),
-                is_denoise=False,
                 x_preprocess=None, 
                 y_preprocess=None):
     '''
@@ -522,7 +521,6 @@ def rpn_test_db(image_dir=conf.DATASET.get_in_train(),
                                         image_dir=image_dir, 
                                         count_positives=count_positives,
                                         count_negative=count_negative,
-                                        is_denoise=is_denoise,
                                         x_preprocess=x_preprocess, 
                                         y_preprocess=y_preprocess)
     #    全部取出来

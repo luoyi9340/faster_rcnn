@@ -228,7 +228,6 @@ def takeout_sample_array(y_true, fmaps, roi_areas=conf.ROIS.get_roi_areas(), roi
     idx = tf.stack([idx_, idx_h, idx_w, idx_k], axis=2)
     anchors = tf.gather_nd(fmaps, idx)    
     anchors = tf.concat([tf.expand_dims(np_tag, axis=-1), anchors], axis=2)
-    
     return anchors
 
 

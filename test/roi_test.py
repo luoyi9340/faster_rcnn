@@ -16,7 +16,9 @@ from PIL import Image
 import numpy as np
 
 import data.dataset_rois as rois
-from utils.conf import DATASET
+import utils.conf as conf
+import models.layers.rpn.preprocess as preprocess
+import utils.alphabet as alphabet
 
 
 
@@ -28,7 +30,7 @@ def show_anchors(fa,
                  is_show_labels=True,
                  is_show_anchors=True,
                  is_show_anchors_center=True):
-    file = DATASET.get_in_train() + "/" + fa['file_name'] + ".png"
+    file = conf.DATASET.get_in_train() + "/" + fa['file_name'] + ".png"
     img = Image.open(file)
     img = img.resize((480, 180), Image.ANTIALIAS)
      
@@ -39,6 +41,7 @@ def show_anchors(fa,
     if (is_show_positive):
         print('positives:', len(fa['positives']))
         for (_, anchor, label) in fa['positives']:
+            print(anchor[0], anchor[1], anchor[2], anchor[3])
             rect = plot.Rectangle((anchor[0] - anchor[2]/2, anchor[1] - anchor[3]/2), anchor[2], anchor[3], fill=False, edgecolor = 'red',linewidth=1)
             ax.add_patch(rect)
             pass
@@ -108,19 +111,83 @@ def show_msg(anchors_iterator):
 
 
 rois_creator = rois.RoisCreator()
-# rois_creator.create()
-file_anchors = rois_creator.test_create(label_file_path='/Users/irenebritney/Desktop/vcode/dataset_server/num_letter/train.jsons', 
-                                        file_name='8eb20dd1-0333-43ff-8e5a-61cd3d9d9573', 
-                                        count=10000, 
-                                        train_positives_iou=0.725,
-                                        train_negative_iou=0.05)
-fa = file_anchors[0]
-show_anchors(fa, 
-             is_show_positive=True, 
-             is_show_negative=True, 
-             is_show_labels=True, 
-             is_show_anchors=False,
-             is_show_anchors_center=False)
+# # # rois_creator.create()
+# file_anchors = rois_creator.test_create(label_file_path=conf.DATASET.get_label_train(),
+#                                         file_name='7f1119ea-66f9-4a35-888e-9c9a95c297b5', 
+#                                         count=10, 
+#                                         train_positives_iou=0.7,
+#                                         train_negative_iou=0.05)
+# fa = file_anchors[0]
+# show_anchors(fa, 
+#              is_show_positive=True, 
+#              is_show_negative=True, 
+#              is_show_labels=True, 
+#              is_show_anchors=False,
+#              is_show_anchors_center=False)
+
+
+
+
+def show_rois(X, Y):
+    '''
+        @param x: 图片矩阵
+        @param y: rois数据
+                    [
+                        [IoU, x, y, w, h, idx_w, idx_h, idx_area, idx_scales, vcode_index, x, y, w, h]
+                        ...
+                    ]
+    '''
+    fig = plot.figure()
+    ax = fig.add_subplot(1,1,1)
+     
+    d = {}
+    for y in Y:
+        #    展示anchors
+        #    展示负样本
+        if (y[9] < 0):
+            rect = plot.Rectangle((y[1] - y[3]/2, y[2] - y[4]/2), y[3], y[4], fill=False, edgecolor='green',linewidth=1)
+            ax.add_patch(rect)
+            pass
+        #    展示正样本
+        if (y[9] >= 0):
+            rect = plot.Rectangle((y[1] - y[3]/2, y[2] - y[4]/2), y[3], y[4], fill=False, edgecolor='red',linewidth=1)
+            ax.add_patch(rect)
+            pass
+        #    展示label
+        if (y[9] >= 0 and d.get(y[9]) is None):
+            d[y[9]] = 1
+            print(alphabet.index_category(int(y[9])), y[10], y[11], y[12], y[13])
+            rect = plot.Rectangle((y[10], y[11]), y[12], y[13], fill=False, edgecolor='blue',linewidth=1)
+            ax.add_patch(rect)
+            pass
+        pass
+     
+    #    展示图片
+    X = X / 255.
+    plot.imshow(X)
+    plot.show()
+    pass
+ 
+#    读一个已经生成好的rois.jsons试一下
+image_dir = conf.DATASET.get_in_train()
+count = conf.DATASET.get_count_train()
+rois_out = conf.ROIS.get_train_rois_out()
+is_rois_mutiple_file = False
+count_positives = 48
+count_negative = 48
+batch_size = conf.ROIS.get_batch_size()
+db = rois.read_rois_generator(count, rois_out, is_rois_mutiple_file, image_dir, count_positives, count_negative, batch_size, 
+                                   x_preprocess=None, 
+                                   y_preprocess=None)
+
+show_idx = 1
+idx = 0
+for x, y in db:
+    if (idx >= show_idx):
+        show_rois(x, y)
+        break
+    idx += 1
+    pass
 
 
 

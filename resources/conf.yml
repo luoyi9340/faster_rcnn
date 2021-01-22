@@ -1,16 +1,16 @@
 #   手写字母识别（tensorflow2练手程序）
 dataset:
    #   训练集相关配置
-   in_train: /Users/irenebritney/Desktop
+   in_train: /Users/irenebritney/Desktop/vcode/dataset/num_letter/train
    #   多文件模式中指定每个文件读取多少，单文件模式就是总数
-   count_train: 20000
-   label_train: /Users/irenebritney/Desktop/vcode/dataset_server/num_letter/train.jsons
+   count_train: 100
+   label_train: /Users/irenebritney/Desktop/vcode/dataset/num_letter/train.jsons
    #   label是否多文件。会从train.jsons0, train.jsons1...开始往后读，直到某个idx读不到为止。所以idx一定要连续
    label_train_mutiple: false
    #   验证集相关配置
    in_val: /Users/irenebritney/Desktop/vcode/dataset/num_letter/val
-   count_val: 1000
-   label_val: /Users/irenebritney/Desktop/vcode/dataset_server/num_letter/val.jsons
+   count_val: 100
+   label_val: /Users/irenebritney/Desktop/vcode/dataset/num_letter/val.jsons
    label_val_mutiple: false
    #   测试集相关配置
    in_test: /Users/irenebritney/Desktop/vcode/dataset/num_letter/test
@@ -22,7 +22,7 @@ dataset:
 #   rois相关配置
 rois:
    #   判定为正样本的iou比率（与某个label的IOU大于该值）
-   positives_iou: 0.7
+   positives_iou: 0.725
    #   判定为负样本的iou比率（与所有label的IOU都小于该值）
    negative_iou: 0.3
    #   每张图片多少个正样本（超过的IoU降序取前多少个，不够的补IoU=-1的数据，注：该数量必须<=实际的正样本数）
@@ -51,12 +51,12 @@ rois:
       - 1                  #   1:1 4code时较高命中（此时label基本都是1:1的）
    #   训练数据集
    #   json格式：{file_name:"文件名", vcode:"验证码", positives:[((x,y,w,h), (v, x,y,w,h))...], negative:[(x,y,w,h), ...]}
-   train_rois_out: /Users/irenebritney/Desktop/vcode/dataset_server/temp/rois/rois_train.jsons
+   train_rois_out: temp/rois/rois_train.jsons
    #   当对应的label_*_mutiple为true时有效。同时开启几个线程写入jsons，<=0表示单线程。（一个文件给1个线程，暂时还没摸清python的锁机制，不敢一个文件同时写。。。）
    #   若上面分文件时，这里也会对应写入多份jsons文件。对应rois_train.jsons1, rois_train.jsons2, ...
    train_max_workers: -1
    #   验证数据集
-   val_rois_out: /Users/irenebritney/Desktop/vcode/dataset_server/temp/rois/rois_val.jsons
+   val_rois_out: temp/rois/rois_val.jsons
    val_max_workers: -1
    #   测试数据集
    test_rois_out: temp/rois/rois_test.jsons
@@ -78,7 +78,7 @@ rpn:
    #   nms中判定为前景的最小置信度（大于此概率的anchor会被判定为前景）
    nms_threshold_positives: 0.999999
    #   nms中判定为重叠的最小IoU（大于此IoU的anchor会被判定为重叠而被过滤掉）
-   nms_threshold_iou: 0.01
+   nms_threshold_iou: 0.2
       
       
 #   CNNs网络相关配置

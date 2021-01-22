@@ -20,41 +20,45 @@ import data.dataset as ds
 import data.dataset_rois as ds_rois
 import utils.conf as conf
 import models.rpn as rpn
-from models.layers.rpn.preprocess import preprocess_like_fmaps
+from models.layers.rpn.preprocess import preprocess_like_array
 
-
-#    加载当时训练的配置
-_, _, _, RPN, CNNS, context = conf.load_conf_yaml(conf.RPN.get_save_weights_dir() + '/conf_rpn_resnet34.yml')
 #    print时不用科学计数法表示
 np.set_printoptions(suppress=True)
 
 
+model_conf_fpath = conf.RPN.get_save_weights_dir() + '/conf_rpn_resnet34.yml'
+model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5'
+
+#    加载当时训练的配置
+_, _, M_ROIS, M_RPN, M_CNNS, M_CTX = conf.load_conf_yaml(model_conf_fpath)
+
+
 #    初始化RPN网络
-rpn_model = rpn.RPNModel(cnns_name=RPN.get_cnns(), 
-                         learning_rate=RPN.get_train_learning_rate(),
-                         scaling=CNNS.get_feature_map_scaling(), 
-                         K=RPN.get_K(),
-                         cnns_base_channel_num=CNNS.get_base_channel_num(),
+rpn_model = rpn.RPNModel(cnns_name=M_RPN.get_cnns(), 
+                         learning_rate=M_RPN.get_train_learning_rate(),
+                         scaling=M_CNNS.get_feature_map_scaling(), 
+                         K=M_ROIS.get_K(),
+                         cnns_base_channel_num=M_CNNS.get_base_channel_num(),
                          train_cnns=True,
                          train_rpn=True,
-                         loss_lamda=RPN.get_loss_lamda(),
+                         loss_lamda=M_RPN.get_loss_lamda(),
                          is_build=True)
-rpn_model.load_model_weight(conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5')
+rpn_model.load_model_weight(model_fpath)
 
 
 ################################################################################################3
 #    验证分类准确率和回归MAE
 ################################################################################################3
 count = conf.DATASET.get_count_test()
-count = 5
+count = 10
 X_test, Y_test = ds_rois.rpn_test_db(image_dir=conf.DATASET.get_in_test(), 
                                      count=count, 
                                      rois_out=conf.ROIS.get_test_rois_out(), 
                                      is_rois_mutiple_file=conf.DATASET.get_label_test_mutiple(), 
                                      count_positives=conf.ROIS.get_positives_every_image(), 
                                      count_negative=conf.ROIS.get_negative_every_image(), 
-                                     x_preprocess=lambda x:x, 
-                                     y_preprocess=lambda y:preprocess_like_fmaps(y, shape=rpn_model.rpn.get_output_shape()))
+                                     x_preprocess=lambda x:((x / 255.) - 0.5) * 2, 
+                                     y_preprocess=lambda y:preprocess_like_array(y))
 fmaps = rpn_model.test(X_test, batch_size=conf.ROIS.get_batch_size())
 TP, TN, FP, FN, P, N = rpn_model.test_cls(fmaps, Y_test)
 print('分类准确率((TP + TN) / (P + N)):', (TP + TN) / (P + N))
@@ -72,7 +76,7 @@ X, Y = ds.load_XY_np(count=count,
                       image_dir=conf.DATASET.get_in_test(), 
                       label_fpath=conf.DATASET.get_label_test(), 
                       is_label_mutiple_file=conf.DATASET.get_label_test_mutiple(), 
-                      x_preprocess=None,
+                      x_preprocess=lambda x:((x / 255.) - 0.5) * 2,
                       y_preprocess=None)
 
   
@@ -104,17 +108,19 @@ def show_anchors_labels(X, anchors, labels, show_labels=True, show_anchors=True)
     if (show_anchors):
         print('anchors.count:', len(anchors))
         for a in anchors:
-            print((a[1], a[2]), math.fabs(a[3] - a[1]), math.fabs(a[4] - a[2]))
+#             print((a[1], a[2]), math.fabs(a[3] - a[1]), math.fabs(a[4] - a[2]))
             rect = plot.Rectangle((a[1], a[2]), math.fabs(a[3] - a[1]), math.fabs(a[4] - a[2]), fill=False, edgecolor='red', linewidth=1)
             ax.add_patch(rect)
             pass
         pass
          
     #    绘制图片
-    X = X / 255.
+    X = X / 2. + 0.5
     plot.axis("off")
     plot.imshow(X)
     plot.show()
     pass
-show_anchors_labels(X[4], anchors[4], Y[4], show_labels=False)
+
+idx = 2
+show_anchors_labels(X[idx], anchors[idx], Y[idx], show_labels=True)
 
