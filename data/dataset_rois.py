@@ -13,6 +13,8 @@ import tensorflow as tf
 import numpy as np
 import PIL
 import concurrent.futures.thread as thread
+import itertools
+import random
 
 import data.dataset as ds
 import utils.conf as conf
@@ -221,12 +223,26 @@ class RoisCreator():
             elif (max_iou > train_positives_iou): label_rois[max_iou_label[0]].append((max_iou, anchor, max_iou_label))
             pass
         
+        # TODO positives的顺序需要改为每个label的anchor交替出现
         #    label_rois中每个列表排序并取前positives_every_label个信息
+        arrs = []
+        k_count = 0
         for (_, arr) in label_rois.items(): 
             arr.sort(key=lambda e:e[0], reverse=True)
-            positives += arr
+            arrs.append(arr)
+            k_count += 1
+            pass
+        tuple_arrs = tuple(arrs)
+        #    让每个label的anchor交替出现
+        alternate_zip = itertools.zip_longest(*tuple_arrs)
+        for alternate_anchor in alternate_zip:
+            for i in range(k_count):
+                if (alternate_anchor[i] is not None): positives.append(alternate_anchor[i])
+                pass
             pass
         
+        #    负样本乱序
+        random.shuffle(negative)
         #    限制负样本的数量（负样本太多了），预留4倍的数量，以后配置用
         if (len(negative) > conf.ROIS.get_negative_every_image() * 4):
             negative = negative[:conf.ROIS.get_negative_every_image() * 4]
