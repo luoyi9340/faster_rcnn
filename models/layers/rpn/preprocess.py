@@ -217,7 +217,7 @@ def takeout_sample_array(y_true, fmaps, roi_areas=conf.ROIS.get_roi_areas(), roi
     #    维度转换(batch_size, H, W, 6, K) -> (batch_size, H, W, K, 6) 每行的6个数据代表[正样本概率，负样本概率，d[x], d[y], d[w], d[h]]
     fmaps = tf.transpose(fmaps, perm=[0,1,2,4,3])
     #    根据y_true从fmaps中生成anchors[batch_size=None, num=正负样本数, 7]
-    num_every_b = tf.math.count_nonzero(y_true[:,:,0], axis=1)                  #    每个batch的样本数。其实不用取，每个batch的样本数应该都是每张图的正负样本数之和
+    num_every_b = tf.math.count_nonzero(y_true[:,:,0] + 1, axis=1)              #    每个batch的样本数。其实不用取，每个batch的样本数应该都是每张图的正负样本数之和。+1是为了防止IoU为0的anchor也被过滤掉了
     num_b = tf.math.count_nonzero(num_every_b)                                  #    总batch数
     idx_ = tf.range(num_b, dtype=tf.int32)
     idx_ = tf.repeat(tf.expand_dims(idx_, axis=-1), repeats=num_every_b[0], axis=1)
