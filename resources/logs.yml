@@ -21,7 +21,6 @@ rpn_train:
    console: true
    #   log输出格式
    formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
-   
 #   rpn损失相关日志
 rpn_loss:
    #   日志输出级别
@@ -32,7 +31,6 @@ rpn_loss:
    console: true
    #   log输出格式
    formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
-   
 #   rpn评价相关日志
 rpn_metric:
    #   日志输出级别
@@ -44,4 +42,47 @@ rpn_metric:
    #   log输出格式
    formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
    
-#   
+
+#   proposal生成器
+proposal_creator:
+      #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/proposal/creator.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+   
+
+#   fast_rcnn训练
+fast_rcnn_train:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/fast_rcnn/train.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+#   fast_rcnn损失
+fast_rcnn_loss:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/fast_rcnn/losses.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+#   fast_rcnn评价
+fast_rcnn_metric:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/fast_rcnn/metrics.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+   

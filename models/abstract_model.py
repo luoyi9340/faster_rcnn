@@ -37,10 +37,14 @@ class AModel(metaclass=abc.ABCMeta):
         #    装配网络模型
         self.assembling(self._net)
         
+        #    初始化优化器，损失，评价
+        self._optimizer = self.optimizer(net=self._net, learning_rate=learning_rate)
+        self._loss = self.loss()
+        self._metrics = self.metrics()
         #    编译网络
-        self._net.compile(optimizer=self.optimizer(learning_rate=learning_rate, net=self._net), 
-                          loss=self.loss(), 
-                          metrics=self.metrics())
+        self._net.compile(optimizer=self._optimizer, 
+                          loss=self._loss, 
+                          metrics=self._metrics)
 #         self._net.compile(optimizer=self.optimizer(learning_rate=learning_rate, net=self._net), 
 #                         loss=self.loss())
         pass

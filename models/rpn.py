@@ -43,6 +43,7 @@ class RPNModel(models.AModel):
         
         self.__cnns_name = cnns_name
         self.cnns = None
+        self.rpn = None
         
         self.__train_cnns = train_cnns
         self.__train_rpn = train_rpn
@@ -54,6 +55,16 @@ class RPNModel(models.AModel):
         if (is_build):
             self._net.build(input_shape=input_shape)
             pass
+        pass
+    
+    
+    #    设置cnns层是否参与运算
+    def set_cnns_trainable(self, training):
+        self.cnns.trainable = training
+        pass
+    #    设置rpn层是否参与运算
+    def set_rpn_trainable(self, training):
+        self.rpn.trainable = training
         pass
     
 

@@ -30,7 +30,7 @@ model_conf_fpath = conf.RPN.get_save_weights_dir() + '/conf_rpn_resnet34.yml'
 model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5'
 
 #    加载当时训练的配置
-_, _, M_ROIS, M_RPN, M_CNNS, M_CTX = conf.load_conf_yaml(model_conf_fpath)
+_, _, M_ROIS, M_RPN, M_CNNS, M_CTX, M_PROPOSALE = conf.load_conf_yaml(model_conf_fpath)
 
 
 #    初始化RPN网络
@@ -44,6 +44,9 @@ rpn_model = rpn.RPNModel(cnns_name=M_RPN.get_cnns(),
                          loss_lamda=M_RPN.get_loss_lamda(),
                          is_build=True)
 rpn_model.load_model_weight(model_fpath)
+#    设置cnns不参与训练
+rpn_model.cnns.trainable = False
+rpn_model.show_info()
 
 
 ################################################################################################3
@@ -83,8 +86,8 @@ X, Y = ds.load_XY_np(count=count,
 #    拿到测试数据全部的建议框
 fmaps = rpn_model.test(X, batch_size=conf.ROIS.get_batch_size())
 anchors = rpn_model.candidate_box_from_fmap(fmaps=fmaps, 
-                                            threshold_prob=conf.RPN.get_nms_threshold_positives(), 
-                                            threshold_iou=conf.RPN.get_nms_threshold_iou())
+                                            threshold_prob=0.5, 
+                                            threshold_iou=0.8)
   
 #    在图上划出候选框与标签
 def show_anchors_labels(X, anchors, labels, show_labels=True, show_anchors=True):
@@ -121,6 +124,6 @@ def show_anchors_labels(X, anchors, labels, show_labels=True, show_anchors=True)
     plot.show()
     pass
 
-idx = 2
-show_anchors_labels(X[idx], anchors[idx], Y[idx], show_labels=True)
+idx = 1
+show_anchors_labels(X[idx], anchors[idx], Y[idx], show_labels=True, show_anchors=False)
 

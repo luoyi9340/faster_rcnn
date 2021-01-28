@@ -9,6 +9,7 @@ Created on 2021年1月9日
 import numpy as np
 
 import utils.conf as conf
+import data.part as part
 
 
 #    非极大值抑制
@@ -68,19 +69,15 @@ def _nms(anchors,
         anchors_tmp = np.delete(anchors_tmp, 0, axis=0)
         
         if (len(anchors_tmp) == 0): break
-    
-        #    计算max与其他anchor的IoU
-        #    计算交点处的左上、右下坐标
-        xl = np.maximum(max_prob_anchor[1], anchors_tmp[:,1], dtype=np.float32)
-        yl = np.maximum(max_prob_anchor[2], anchors_tmp[:,2], dtype=np.float32)
-        xr = np.minimum(max_prob_anchor[3], anchors_tmp[:,3], dtype=np.float32)
-        yr = np.minimum(max_prob_anchor[4], anchors_tmp[:,4], dtype=np.float32)
-        #    计算交集、并集面积
-        w = np.maximum(0., xr - xl)
-        h = np.maximum(0., yr - yl)
-        areas_intersection = w * h
-        areas_union = (np.add(max_prob_anchor[5], anchors_tmp[:,5]) - areas_intersection).astype(np.float32)
-        IoU = (areas_intersection / (areas_union + areas_intersection)).astype(np.float32)
+        #    计算IoU
+        rect_tag = (max_prob_anchor[1], max_prob_anchor[2], max_prob_anchor[3], max_prob_anchor[4])
+        rect_srcs = np.zeros(shape=(anchors_tmp.shape[0], 4))
+        rect_srcs[:,0] = anchors_tmp[:,1]
+        rect_srcs[:,1] = anchors_tmp[:,2]
+        rect_srcs[:,2] = anchors_tmp[:,3]
+        rect_srcs[:,3] = anchors_tmp[:,4]
+        IoU = part.iou_xlyl_xryr_np(rect_srcs, rect_tag)
+
         idx = np.where(IoU <= threshold)
         #    剔除掉IoU>阈值的部分
         anchors_tmp = anchors_tmp[idx]

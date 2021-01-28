@@ -8,15 +8,14 @@ Created on 2021年1月5日
 '''
 import os
 import json
-import math
 import tensorflow as tf
 import numpy as np
-import PIL
 import concurrent.futures.thread as thread
 import itertools
 import random
 
 import data.dataset as ds
+import data.part as part
 import utils.conf as conf
 import utils.alphabet as alphabet
 import utils.logger_factory as logf
@@ -60,7 +59,7 @@ class RoisCreator():
             @param rois_out: rois.json文件路径
             @param log_interval: 每多少条记录打印一次日志
         '''
-        fw = file_writer(rois_out=rois_out)
+        fw = ds.file_writer(json_out=rois_out)
         #    迭代标签文件
         label_iterator = ds.label_file_iterator(label_file_path=label_file_path, count=count)
         #    统计信息
@@ -286,21 +285,8 @@ class RoisCreator():
         anchor_y = anchor[1]
         anchor_w = anchor[2]
         anchor_h = anchor[3]
-        
-        #    根据label和anchor中心点坐标判断位置关系：相离 / 相交
-        #    如果两个中心坐标距离超过两个半径之和，则判定为相离，直接返回0
-        if (math.fabs(label_x - anchor_x)  > (label_w + anchor_w) / 2.) \
-            or (math.fabs(label_y - anchor_y)  > (label_h + anchor_h) / 2.):
-            return 0.
-        #    计算交集面积(4个顶点x中位于中间的两个 和 4个顶点y中位于中间的两个就是交集坐标)
-        arr_x = [label_x + label_w/2, label_x - label_w/2, anchor_x + anchor_w/2, anchor_x - anchor_w/2]
-        arr_x.sort()
-        arr_y = [label_y + label_h/2, label_y - label_h/2, anchor_y + anchor_h/2, anchor_y - anchor_h/2]
-        arr_y.sort()
-        area_intersection = math.fabs(arr_x[1] - arr_x[2]) * math.fabs(arr_y[1] - arr_y[2])
-        #    计算并集面积
-        area_union = label_w * label_h + anchor_w * anchor_h - area_intersection
-        return area_intersection / area_union
+        return part.iou_center_wh(rect1=(anchor_x, anchor_y, anchor_w, anchor_h), 
+                                  rect2=(label_x, label_y, label_w, label_h))
     
     
     #   按照给定的W，H，特征图缩放比例，面积，长宽比生成所有可能的anchor
@@ -360,27 +346,7 @@ class RoisCreator():
 
 
 #    读上面creator生成的数据，组成tensor数据源
-#    建上级目录，清空同名文件
-def mkdirs_rois_out_and_remove_file(rois_out=conf.ROIS.get_train_rois_out()):
-    #    判断创建上级目录
-    _dir = os.path.dirname(rois_out)
-    if (not os.path.exists(_dir)):
-        os.makedirs(_dir)
-        pass
-        
-    #    若文件存在则删除重新写入
-    if (os.path.exists(rois_out)):
-        os.remove(rois_out)
-        pass
-    pass
 
-
-#    打开文件（该方法会清空之前的文件）
-def file_writer(rois_out=conf.ROIS.get_train_rois_out()):
-    mkdirs_rois_out_and_remove_file(rois_out=rois_out)
-    
-    fw = open(rois_out, mode='w', encoding='utf-8')
-    return fw
 
 
 #    rpn网络单独训练数据集生成器
@@ -425,11 +391,10 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 
                 #    读取图片信息，并且归一化
                 file_name = d['file_name']
-                image = PIL.Image.open(image_dir + "/" + file_name + '.png', mode='r')
-                image = image.resize((conf.IMAGE_WEIGHT, conf.IMAGE_HEIGHT),PIL.Image.ANTIALIAS)
-                x = np.asarray(image, dtype=np.float32)
-                #    x数据做前置处理（归一化在这里做）
-                if (x_preprocess is not None):x = x_preprocess(x)
+                x = part.read_image(image_path=image_dir + "/" + file_name + '.png', 
+                                    resize_weight=conf.IMAGE_WEIGHT, 
+                                    resize_height=conf.IMAGE_HEIGHT, 
+                                    preprocess=x_preprocess)
                 
                 #    读取训练数据信息
                 #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
@@ -552,7 +517,7 @@ def rpn_test_db(image_dir=conf.DATASET.get_in_train(),
 
 
 #    取总anchor数
-def total_anchors(rois_out, 
+def total_samples(rois_out, 
                  is_rois_mutiple_file=False, 
                  count=100,
                  positives_every_image=64,

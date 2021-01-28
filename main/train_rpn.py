@@ -39,7 +39,7 @@ log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(),
 
 #    一些全局参数
 #    单epoch数据总数
-total_anchors = rois.total_anchors(is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
+total_anchors = rois.total_samples(is_rois_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
                                        count=conf.DATASET.get_count_train(), 
                                        rois_out=conf.ROIS.get_train_rois_out())
 batch_size = conf.ROIS.get_batch_size()

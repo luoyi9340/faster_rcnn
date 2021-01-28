@@ -9,70 +9,56 @@
 Created on 2021年1月22日
 '''
 import tensorflow as tf
+import math
 
 import utils.conf as conf
-import data.dataset_rois as rois
-from models.layers.rpn.preprocess import preprocess_like_array, takeout_sample_array
+import data.dataset_rois as ds_rois
+import data.dataset_proposals as ds_proposals
+from models.layers.fast_rcnn.preprocess import preprocess_like_array
 
 
-image_dir = conf.DATASET.get_in_train()
-count = conf.DATASET.get_count_train()
-rois_out = conf.ROIS.get_train_rois_out()
-is_rois_mutiple_file = False
-count_positives = conf.ROIS.get_positives_every_image()
-count_negative = conf.ROIS.get_negative_every_image()
-batch_size = conf.ROIS.get_batch_size()
+batch_size = 2
+epochs = 2
+count = 100
+steps_per_epoch = math.ceil(count / batch_size)
+print(steps_per_epoch)
+# db_train = ds_proposals.fast_rcnn_tensor_db(image_dir=conf.DATASET.get_in_train(), 
+#                                             count=count, 
+#                                             proposals_out=conf.PROPOSALES.get_train_proposal_out(), 
+#                                             is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
+#                                             proposal_every_image=conf.PROPOSALES.get_proposal_every_image(), 
+#                                             batch_size=batch_size, 
+#                                             epochs=epochs, 
+#                                             shuffle_buffer_rate=conf.PROPOSALES.get_shuffle_buffer_rate(), 
+#                                             ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9), 
+#                                             x_preprocess=lambda x:((x / 255.) - 0.5) * 2, 
+#                                             y_preprocess=lambda y:preprocess_like_array(y, feature_map_scaling=conf.CNNS.get_feature_map_scaling()))
+# db_iter = iter(db_train)
+# step = 0
+# for step in range(steps_per_epoch):
+#     d = db_iter.next()
+#     print(d[0].shape)
+#     print(d[1].shape)
+#     pass
+# print(step)
 
-#    验证数据集生成过程
-db_iter = rois.read_rois_generator(count, rois_out, is_rois_mutiple_file, image_dir, count_positives, count_negative, batch_size, 
-                                   x_preprocess=lambda x:((x / 255.) - 0.5) * 2, 
-                                   y_preprocess=lambda y:preprocess_like_array(y))
-db_train = rois.rpn_train_db(image_dir=image_dir, 
-                             count=count, 
-                             rois_out=rois_out, 
-                             is_rois_mutiple_file=is_rois_mutiple_file, 
-                             count_positives=count_positives, 
-                             count_negative=count_negative, 
-                             batch_size=batch_size, 
-                             shuffle_buffer_rate=-1, 
-                             epochs=1, 
-                             ymaps_shape=(count_positives+count_negative, 10), 
-                             x_preprocess=lambda x:((x / 255.) - 0.5) * 2, 
-                             y_preprocess=lambda y:preprocess_like_array(y))
-
-x_cls = tf.random.uniform(shape=(batch_size, 23,60, 2, conf.ROIS.get_K()))
-x_cls = tf.nn.softmax(x_cls, axis=3)
-x_reg_dx = tf.ones(shape=(batch_size, 23,60, 1, conf.ROIS.get_K()))
-x_reg_dy = tf.ones(shape=(batch_size, 23,60, 1, conf.ROIS.get_K())) * 2
-x_reg_dw = tf.ones(shape=(batch_size, 23,60, 1, conf.ROIS.get_K())) * 3
-x_reg_dh = tf.ones(shape=(batch_size, 23,60, 1, conf.ROIS.get_K())) * 4
-x_reg = tf.concat([x_reg_dx, x_reg_dy, x_reg_dw, x_reg_dh], axis=3)
-x = tf.concat([x_cls, x_reg], axis=3)
-
-
-#    检查数量不对的到底什么情况
-def checkout(anchors, P, N, y):
-    print(y[3])
-    pass
-
-
-i_b = 0
-for _, y in db_train:
-    anchors = takeout_sample_array(y, x)
-    #    取正负样本数
-    anchors_p = anchors[anchors[:,:,0] > 0]
-    anchors_n = anchors[anchors[:,:,0] < 0]
-    P = tf.cast(tf.math.count_nonzero(anchors_p[:,0]), dtype=tf.float32) 
-    N = tf.cast(tf.math.count_nonzero(anchors_n[:,0]), dtype=tf.float32) 
-    P = int(P.numpy())
-    N = int(N.numpy())
-    if (P != count_positives * batch_size \
-        or N != count_negative * batch_size):
-        checkout(anchors, P, N, y)
-        break
+def range_generator(count=100):
+    for i in range(count):
+        yield i, i
         pass
-    i_b += 1
+    pass
+db = tf.data.Dataset.from_generator(generator=lambda :range_generator(count=150), 
+                                    output_types=(tf.int32, tf.int32), 
+                                    output_shapes=(tf.TensorShape(None), tf.TensorShape(None)))
+db = db.batch(batch_size)
+db = db.repeat(epochs)
+db_iter = iter(db)
+for epoch in range(epochs):
+    for step in range(steps_per_epoch):
+        x, y = db_iter.next()
+        print(epoch, step, x, y)
+        pass
     pass
 
-print(i_b)
+
 

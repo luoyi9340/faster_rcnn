@@ -6,13 +6,8 @@
 Created on 2020年12月31日
 '''
 import math
-import numpy as np
-import tensorflow as tf
-import utils.math_expand as me
 
 
-print(math.sqrt(7000))
-print(math.log(133.))
-print(tf.math.log(133.))
-print(np.math.log(133.))
-print(math.exp(0.27))
+a = [[1,2,3,4]]
+a.append([-1, 0,0,0,0])
+print(a)

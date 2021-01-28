@@ -143,6 +143,11 @@ class RPNLoss(tf.keras.losses.Loss):
         #    batch求和
         loss_reg = tf.reduce_sum([loss_x, loss_y, loss_w, loss_h], axis=0)
         
+#         print('loss_x:', loss_x)
+#         print('loss_y:', loss_y)
+#         print('loss_w:', loss_w)
+#         print('loss_h:', loss_h)
+#         print('loss_reg:', loss_reg)
         tf.print('loss_x:', loss_x, output_stream=logf.get_logger_filepath('rpn_loss'))
         tf.print('loss_y:', loss_y, output_stream=logf.get_logger_filepath('rpn_loss'))
         tf.print('loss_w:', loss_w, output_stream=logf.get_logger_filepath('rpn_loss'))

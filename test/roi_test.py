@@ -14,6 +14,7 @@ sys.path.append(ROOT_PATH)
 import matplotlib.pyplot as plot
 from PIL import Image
 import numpy as np
+np.set_printoptions(suppress=True, threshold=16)
 
 import data.dataset_rois as rois
 import utils.conf as conf
@@ -128,7 +129,7 @@ rois_creator = rois.RoisCreator()
 
 
 
-def show_rois(X, Y):
+def show_rois(X, Y, show_P=True, show_N=True, show_L=True):
     '''
         @param x: 图片矩阵
         @param y: rois数据
@@ -144,17 +145,17 @@ def show_rois(X, Y):
     for y in Y:
         #    展示anchors
         #    展示负样本
-        if (y[9] < 0):
+        if (show_N and y[9] < 0):
             rect = plot.Rectangle((y[1] - y[3]/2, y[2] - y[4]/2), y[3], y[4], fill=False, edgecolor='green',linewidth=1)
             ax.add_patch(rect)
             pass
         #    展示正样本
-        if (y[9] >= 0):
+        if (show_P and y[9] >= 0):
             rect = plot.Rectangle((y[1] - y[3]/2, y[2] - y[4]/2), y[3], y[4], fill=False, edgecolor='red',linewidth=1)
             ax.add_patch(rect)
             pass
         #    展示label
-        if (y[9] >= 0 and d.get(y[9]) is None):
+        if (show_L and y[9] >= 0 and d.get(y[9]) is None):
             d[y[9]] = 1
             print(alphabet.index_category(int(y[9])), y[10], y[11], y[12], y[13])
             rect = plot.Rectangle((y[10], y[11]), y[12], y[13], fill=False, edgecolor='blue',linewidth=1)
@@ -184,10 +185,38 @@ show_idx = 1
 idx = 0
 for x, y in db:
     if (idx >= show_idx):
-        show_rois(x, y)
+        show_rois(x, y, show_N=False)
         break
     idx += 1
     pass
+
+#    计算原始数据中的tx, ty, tw, th
+# num = 0
+# total_tx = 0
+# total_ty = 0
+# total_tw = 0
+# total_th = 0
+# for x, y in db:
+#     y_true = y[y[:,9] > 0]
+#     num += 32
+#     Gx = y_true[:,10] + y_true[:,12]/2
+#     Gy = y_true[:,11] + y_true[:,13]/2
+#     Gw = y_true[:,12]
+#     Gh = y_true[:,13]
+#     Px = y_true[:,1]
+#     Py = y_true[:,2]
+#     Pw = y_true[:,3]
+#     Ph = y_true[:,4]
+#     tx = (Gx - Px) * Pw                    #    t[x] = (G[x] - P[x]) * P[w]
+#     ty = (Gy - Py) * Ph                    #    t[y] = (G[y] - P[y]) * P[h]
+#     tw = np.log(Gw / Pw)                   #    t[w] = log(G[w] / P[w])
+#     th = np.log(Gh / Ph)                   #    t[h] = log(G[h] / P[h])
+#     total_tx = np.sum(tx)
+#     total_ty = np.sum(ty)
+#     total_tw = np.sum(tw)
+#     total_th = np.sum(th)
+#     pass
+# print(np.around(total_tx / num), 4, np.around(total_ty / num, 4), np.around(total_tw / num, 4), np.around(total_th / num, 4))
 
 
 

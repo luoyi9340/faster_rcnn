@@ -32,7 +32,7 @@ import utils.alphabet as alphabet
 #    标签文件迭代器
 def label_file_iterator(label_file_path=conf.DATASET.get_label_train(),
                         count=conf.DATASET.get_count_train()):
-    '''标签文件迭代器
+    '''标签文件迭代器（注：该函数的标签坐标是原坐标，要压缩的话自行处理）
         json格式
         {
             fileName:'${fileName}', 
@@ -43,25 +43,31 @@ def label_file_iterator(label_file_path=conf.DATASET.get_label_train(),
                 ]
         }
         @param label_file_path: 标签文件
-        @param image_dir: 图片目录
+        @param count: 读取记录数，如果文件记录数不够则循环读取直到够数为止
+        @return: file_name(str), vcode(str), labels(list:[key, x, y, w, h])
     '''
     i = 0
-    for line in open(label_file_path, mode='r', encoding='utf-8'):
-        if (i >= count): break
-        i += 1
-        j = json.loads(line)
-        
-        file_name = j['fileName']
-        vcode = j['vcode']
-        annos = j['annos']
-        labels = []
-        for anno in annos:
-            labels.append((anno['key'], anno['x'], anno['y'], anno['w'], anno['h']))
+    while (i < count):
+        for line in open(label_file_path, mode='r', encoding='utf-8'):
+            if (i >= count): break
+            i += 1
+            j = json.loads(line)
+            
+            file_name = j['fileName']
+            vcode = j['vcode']
+            annos = j['annos']
+            labels = []
+            for anno in annos:
+                labels.append((anno['key'], anno['x'], anno['y'], anno['w'], anno['h']))
+                pass
+            
+            yield file_name, vcode, labels
             pass
-        
-        yield file_name, vcode, labels
+        #    如果结束了i还等于0说明文件是空的
+        assert (i > 0), 'file is empty. file_name:{}'.format(file_name)
         pass
     pass
+
 
 
 
@@ -83,6 +89,25 @@ def get_fpaths(is_mutiple_file=False, file_path=None):
         f_idx += 1
         pass
     return fpaths
+#    打开文件（该方法会清空之前的文件）
+def file_writer(json_out=conf.ROIS.get_train_rois_out()):
+    mkdirs_and_remove_file(rois_out=json_out)
+    
+    fw = open(json_out, mode='w', encoding='utf-8')
+    return fw
+#    建上级目录，清空同名文件
+def mkdirs_and_remove_file(rois_out=conf.ROIS.get_train_rois_out()):
+    #    判断创建上级目录
+    _dir = os.path.dirname(rois_out)
+    if (not os.path.exists(_dir)):
+        os.makedirs(_dir)
+        pass
+        
+    #    若文件存在则删除重新写入
+    if (os.path.exists(rois_out)):
+        os.remove(rois_out)
+        pass
+    pass
 
 
 #    读取numpy数据集，仅用于小批量数据（比如跑个test）
