@@ -6,6 +6,8 @@
 Created on 2021年1月28日
 '''
 import math
+import numpy as np
+np.set_printoptions(suppress=True, threshold=16)
 
 import utils.conf as conf
 import utils.logger_factory as logf
