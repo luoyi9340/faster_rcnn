@@ -34,7 +34,7 @@ proposals:
    #   训练时每次取多少个样本，总样本数一定要是他的整数倍(RepeatDataset处理不了每轮epoch尾数不足的问题)
    batch_size: 2
    #   训练多少个epochs
-   epochs: 2
+   epochs: 5
    
 
 #   rois相关配置（原始图片生成roi候选框用于训练RPN网络）
@@ -109,6 +109,7 @@ fast_rcnn:
       - 7
    #   loss = loss_cls + λ * loss_reg中间的那个λ
    loss_lamda: 0.1
+   train_learning_rate: 0.001
    #   每层全连接参数维度
    fc_weights: 2048
    #   全连接层数

@@ -12,9 +12,9 @@ import utils.conf as conf
 from models.abstract_model import AModel
 from models.layers.resnet.models import ResNet34, ResNet50
 from models.layers.fast_rcnn.models import FastRCNNLayer
-from models.layers.fast_rcnn.preprocess import roi_pooling
 from models.layers.fast_rcnn.losses import FastRcnnLoss
 from models.layers.fast_rcnn.metrics import FastRcnnMetricCls, FastRcnnMetricReg
+from models.layers.roi_pooling.preprocess import roi_pooling
 
 
 
@@ -33,6 +33,7 @@ class FastRcnnModel(AModel):
     '''
     def __init__(self, 
                  name='FastRcnnModel', 
+                 learning_rate=0.001,
                  cnns_name=conf.FAST_RCNN.get_cnns(),
                  scaling=conf.CNNS.get_feature_map_scaling(), 
                  cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
@@ -72,8 +73,9 @@ class FastRcnnModel(AModel):
         
         self.__train_cnns = train_cnns
         self.__train_fast_rcnn = train_fast_rcnn
+        self.__learning_rate = learning_rate
         
-        super(FastRcnnModel, self).__init__(name=name, **kwargs)
+        super(FastRcnnModel, self).__init__(name=name, learning_rate=learning_rate, **kwargs)
 
         if (is_build):
             self._net.build(input_shape=input_shape)
@@ -99,7 +101,6 @@ class FastRcnnModel(AModel):
                                        fc_weights=self.__fc_weights,
                                        fc_layers=self.__fc_layers,
                                        fc_dropout=self.__fc_dropout)
-        
 #         net.add(self.cnns)
 #         net.add(self.fast_rcnn)
         pass
@@ -113,6 +114,7 @@ class FastRcnnModel(AModel):
     #    评价函数
     def metrics(self):
         return [FastRcnnMetricCls(), FastRcnnMetricReg()]
+    
     
     #    训练步骤
     @tf.function(input_signature=step_signature())
@@ -128,12 +130,17 @@ class FastRcnnModel(AModel):
             loss = self._net.loss(y, y_pred)
             pass
         #    梯度更新
-        grads = tf.gradients(loss, self._net.trainable_variables)
-        self._net.optimizer.apply_gradients(zip(grads, self._net.trainable_variables))
+        cnns_tvs = self.cnns.trainable_variables
+        fast_rcnn_tvs = self.fast_rcnn.trainable_variables
+        tvs = cnns_tvs + fast_rcnn_tvs
+        grads = tf.gradients(loss, tvs)
+        self._net.optimizer.apply_gradients(zip(grads, tvs))
         #    计算评价指标
         logs = self.run_metrics(y, y_pred, tag='train')
         logs['train_loss'] = loss
         return logs
+    
+    
     #    验证步骤
     @tf.function(input_signature=step_signature())
     def val_step(self, x, y):
@@ -147,6 +154,7 @@ class FastRcnnModel(AModel):
         logs['val_loss'] = loss
         return logs
     
+    
     #    计算评价指标
     def run_metrics(self, y_true, y_pred, tag='train'):
         logs = {}
@@ -155,6 +163,8 @@ class FastRcnnModel(AModel):
             logs[tag + '_' + metric.name] = metric.result()
             pass
         return logs
+    
+    
     #    一轮epoch后重置各种参数
     def reset_after_epoch(self):
         #    重置评价指标
@@ -163,13 +173,15 @@ class FastRcnnModel(AModel):
             pass
         pass
     
+    
     #    自定义训练过程
     def custom_train(self,
                      db_train=None,
                      db_val=None,
                      batch_size=conf.PROPOSALES.get_batch_size(),
                      epochs=conf.PROPOSALES.get_epochs(),
-                     steps_per_epoch=100):
+                     steps_per_epoch=100,
+                     tensorboard_dir=conf.FAST_RCNN.get_tensorboard_dir()):
         '''自定义训练过程
             @param db_train: 训练集
             @param db_val: 验证集
@@ -178,22 +190,35 @@ class FastRcnnModel(AModel):
             @param steps_per_epoch: 每轮epochs要训练多少步
         '''
         callbacks = self.callback_list(batch_size=batch_size, epochs=epochs, steps_per_epoch=steps_per_epoch)
-        #    训练过程中记录的日志
-        logs = {}
+        tensorboard_dir = tensorboard_dir + "/" + self.model_name() + "_b" + str(batch_size) + "_lr" + str(self.__learning_rate)
+        train_summary_writer = tf.summary.create_file_writer(tensorboard_dir + "/train")
+        val_summary_writer = tf.summary.create_file_writer(tensorboard_dir + '/validation')
+        
         #    训练开始
-        callbacks.on_train_begin(logs)
+        callbacks.on_train_begin()
         db_iter = iter(db_train)
         for epoch in range(epochs):
+            #    训练过程中记录的日志
+            logs = {}
             #    epoch开始
             callbacks.on_epoch_begin(epoch, logs)
             
             for step in range(steps_per_epoch):
                 x, y = db_iter.next()
+                crt_step = epoch * steps_per_epoch + step
+                print('crt_step:', crt_step)
                 #    每轮训练batch开始
                 callbacks.on_train_batch_begin(step, logs)
                 #    执行训练步骤
                 train_logs = self.train_step(x, y)
                 logs.update(train_logs)
+                #    记录需要观测的值
+                for k,v in train_logs.items():
+                    tf.summary.scalar(k, v, step=crt_step)
+                    pass
+                #   记录每次batch的lr
+                tf.summary.scalar('lr', self._net.optimizer.lr, step=crt_step) 
+                
                 #    每轮训练batch结束
                 callbacks.on_train_batch_end(step, logs)
                 pass
@@ -201,16 +226,33 @@ class FastRcnnModel(AModel):
             #    验证开始
             callbacks.on_test_begin(logs)
             step = 0
+            val_loss = 0
+            val_cls_acc = 0
+            val_reg_mae = 0
             for x, y in db_val:
                 #    每轮验证开始
                 callbacks.on_test_batch_begin(step, logs)
                 #    执行验证步骤
                 val_logs = self.val_step(x, y)
-                logs.update(val_logs)
+                #    记录验证损失，验证评价指标
+                val_loss += val_logs.get('val_loss')
+                val_cls_acc += val_logs.get('val_FastRcnnMetricCls')
+                val_reg_mae += val_logs.get('val_FastRcnnMetricReg')
+                
                 #    每轮验证结束
                 callbacks.on_test_batch_end(step, logs)
                 step += 1
                 pass
+            val_loss = val_loss / step
+            tf.summary.scalar('val_loss', val_loss, step=epoch) 
+            logs['val_loss'] = val_loss
+            val_cls_acc = val_cls_acc / step
+            tf.summary.scalar('val_cls_acc', val_cls_acc, step=epoch) 
+            logs['val_cls_acc'] = val_cls_acc
+            val_reg_mae = val_reg_mae / step
+            tf.summary.scalar('val_reg_mae', val_reg_mae, step=epoch) 
+            logs['val_reg_mae'] = val_reg_mae
+            
             #    验证结束
             callbacks.on_test_end(logs)
             
@@ -223,6 +265,7 @@ class FastRcnnModel(AModel):
         #    训练结束
         callbacks.on_train_end(logs)
         pass
+    
     
     #    各种回调
     def callback_list(self, batch_size, epochs, steps_per_epoch):
