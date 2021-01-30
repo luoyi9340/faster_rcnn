@@ -28,7 +28,8 @@ class ROIPooling(tf.keras.layers.Layer):
                                         每个对象:tensor(num, 9)
             @param untrain_ycrt_queue: 非训练时当前批次的y数据
         '''
-        super(ROIPooling, self).__init__(name=name, input_shape=input_shape, **kwargs)
+        #    该layer为dynamic layer。否则编译后两个queue的值不会更新
+        super(ROIPooling, self).__init__(name=name, input_shape=input_shape, dynamic=True, **kwargs)
         
         self.__kernel_size = kernel_size
         self._train_ycrt_queue = train_ycrt_queue
@@ -44,6 +45,8 @@ class ROIPooling(tf.keras.layers.Layer):
         else:
             y = self._untrain_ycrt_queue.crt_data()
             pass
+#         tf.print('training:', training)
+#         tf.print('in roipooling y:', y)
         return roi_pooling(x, y, roipooling_ksize=self.__kernel_size)
     
     pass

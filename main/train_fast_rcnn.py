@@ -26,12 +26,16 @@ total_samples = ds_proposals.total_samples(proposal_out=conf.PROPOSALES.get_trai
                                            is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
                                            count=conf.DATASET.get_count_train(), 
                                            proposal_every_image=conf.PROPOSALES.get_proposal_every_image())
+train_count = conf.DATASET.get_count_train()
+# train_count = 100
+val_count = conf.DATASET.get_count_val()
+# val_count = 50
 log.info('total_samples:%d epochs:%d batch_size:%d', total_samples, epochs, batch_size)
 
 
 log.info('load train db...')
 db_train, train_y_crt_queue = ds_proposals.fast_rcnn_tensor_db(image_dir=conf.DATASET.get_in_train(), 
-                                                                count=conf.DATASET.get_count_train(), 
+                                                                count=train_count, 
                                                                 proposals_out=conf.PROPOSALES.get_train_proposal_out(), 
                                                                 is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
                                                                 proposal_every_image=conf.PROPOSALES.get_proposal_every_image(), 
@@ -46,7 +50,7 @@ log.info('load train finished.')
 
 log.info('load val db...')
 db_val, val_y_crt_queue = ds_proposals.fast_rcnn_tensor_db(image_dir=conf.DATASET.get_in_val(), 
-                                                              count=conf.DATASET.get_count_val(), 
+                                                              count=val_count, 
                                                               proposals_out=conf.PROPOSALES.get_val_proposal_out(), 
                                                               is_proposal_mutiple_file=conf.DATASET.get_label_val_mutiple(), 
                                                               proposal_every_image=conf.PROPOSALES.get_proposal_every_image(), 
