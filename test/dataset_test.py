@@ -10,6 +10,7 @@ Created on 2021年1月22日
 '''
 import tensorflow as tf
 import math
+import collections as collections
 
 import utils.conf as conf
 import data.dataset_rois as ds_rois
@@ -42,12 +43,27 @@ print(steps_per_epoch)
 #     pass
 # print(step)
 
-def range_generator(count=100):
+class CrtYQueue():
+    def __init__(self, batch_size):
+        self._queue = collections.deque(maxlen=batch_size)
+        pass
+    def push(self, y):
+        self._queue.append(y)
+        pass
+    def crt_data(self):
+        y = tf.convert_to_tensor(self._queue, dtype=tf.int32)
+        return y
+    pass
+
+
+def range_generator(count=100, crt_y_queue=None):
     for i in range(count):
+        crt_y_queue.push(i)
         yield i, i
         pass
     pass
-db = tf.data.Dataset.from_generator(generator=lambda :range_generator(count=150), 
+crt_y_queue = CrtYQueue(batch_size=batch_size)
+db = tf.data.Dataset.from_generator(generator=lambda :range_generator(count=150, crt_y_queue=crt_y_queue), 
                                     output_types=(tf.int32, tf.int32), 
                                     output_shapes=(tf.TensorShape(None), tf.TensorShape(None)))
 db = db.batch(batch_size)
@@ -56,7 +72,7 @@ db_iter = iter(db)
 for epoch in range(epochs):
     for step in range(steps_per_epoch):
         x, y = db_iter.next()
-        print(epoch, step, x, y)
+        print(y, crt_y_queue.crt_data())
         pass
     pass
 

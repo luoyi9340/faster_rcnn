@@ -38,7 +38,8 @@ class FastRcnnMetricCls(tf.metrics.Metric):
                                 (batch_size*num, 3, 42)：每个proposal的d[w]
                                 (batch_size*num, 4, 42)：每个proposal的d[h]
         '''
-        B, num = y_true.shape[0], y_true.shape[1]                   #    batch_size, 每个batch_size中的proposal数
+        B = tf.math.count_nonzero(y_true[:,0,0] + 1)
+        num = y_true.shape[1]                   #    batch_size, 每个batch_size中的proposal数
         total = B * num
         
         #    预测结果
@@ -96,10 +97,7 @@ class FastRcnnMetricReg(tf.metrics.Metric):
                                 (batch_size*num, 3, 42)：每个proposal的d[w]
                                 (batch_size*num, 4, 42)：每个proposal的d[h]
         '''
-        B, num = y_true.shape[0], y_true.shape[1]                   #    batch_size, 每个batch_size中的proposal数
-        total = B * num
-        
-        arrs = takeout_sample_array(y_true, y_pred)
+        (arrs, total, _, _) = takeout_sample_array(y_true, y_pred)
         dx = arrs[:, 1]
         dy = arrs[:, 2]
         dw = arrs[:, 3]

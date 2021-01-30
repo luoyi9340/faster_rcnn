@@ -55,13 +55,14 @@ proposals_creator = ds_ppsl.ProposalsCreator(threshold_nms_prob=conf.RPN.get_nms
                                                rpn_model=rpn_model)
 
 #    生成建议框
+#    生成训练集建议框
 proposals_creator.create(proposals_out=conf.PROPOSALES.get_train_proposal_out(),
                          image_dir=conf.DATASET.get_in_train(), 
                          label_path=conf.DATASET.get_label_train(), 
                          is_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
                          count=conf.DATASET.get_count_train(), 
                          x_preprocess=lambda x:((x / 255.) - 0.5) * 2)
-
+#    生成验证集建议框
 proposals_creator.create(proposals_out=conf.PROPOSALES.get_val_proposal_out(),
                          image_dir=conf.DATASET.get_in_val(), 
                          label_path=conf.DATASET.get_label_val(), 

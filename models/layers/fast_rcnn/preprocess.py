@@ -73,14 +73,16 @@ def takeout_sample_array(y_true, y_pred):
                                 (batch_size*num, 2, 42)：每个proposal的d[y]
                                 (batch_size*num, 3, 42)：每个proposal的d[w]
                                 (batch_size*num, 4, 42)：每个proposal的d[h]
-        @return: (arrs, total, num) 
-                        arrs tensor(batch_size*num, 5)
+        @return: (arrs, total, B, num) 
+                        arrs: tensor(batch_size*num, 5)
                                 [分类概率，dx, dy, dw, dh]
-                        total 总proposal数
-                        num 每个batch_size中包含多少记录
+                        total: 总proposal数
+                        B: batch_size数量    
+                        num: 每个batch_size中包含多少记录
     '''
     y_pred = tf.transpose(y_pred, perm=[0,2,1])                 #    1个42*5代表y_true1条记录
-    B, num = y_true.shape[0], y_true.shape[1]                   #    batch_size, 每个batch_size中的proposal数
+    B = tf.math.count_nonzero(y_true[:,0,0] + 1)                #    batch_size数
+    num = y_true.shape[1]                                       #    每个batch_size中的proposal数
     total = B * num                                             #    总proposal数
     
     vidx = y_true[:,:,0]
@@ -89,6 +91,6 @@ def takeout_sample_array(y_true, y_pred):
     idx_ = tf.range(total, dtype=tf.int32)
     idxes = tf.stack([idx_, vidx], axis=1)
     arrs = tf.gather_nd(y_pred, indices=idxes)  
-    return arrs
+    return (arrs, total, B, num)
 
 

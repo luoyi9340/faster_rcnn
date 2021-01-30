@@ -48,8 +48,8 @@ class FastRcnnLoss(tf.losses.Loss):
                                 (batch_size*num, 4, 42)：每个proposal的d[h]
         '''
         tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('fast_rcnn_loss'))
-        arrs = takeout_sample_array(y_true, y_pred)
-        loss = self.loss_cls(arrs) + self.__loss_lamda * self.loss_reg(y_true, arrs)
+        (arrs, total, _, _) = takeout_sample_array(y_true, y_pred)
+        loss = self.loss_cls(arrs) + self.__loss_lamda * self.loss_reg(y_true, arrs, total)
         
         tf.print('loss:', loss, output_stream=logf.get_logger_filepath('fast_rcnn_loss'))
         return loss
@@ -75,7 +75,7 @@ class FastRcnnLoss(tf.losses.Loss):
         return loss_cls
     
     #    回归损失
-    def loss_reg(self, y_true, arrs):
+    def loss_reg(self, y_true, arrs, total):
         '''回归损失
             loss_reg = 1/Nreg * ∑(m=1->Nreg)∑(i∈(x,y,w,h)) smootL1(t[m,i] - d[m,i])
                             t[m,i]：第m个样本的真实t[i]值
@@ -92,8 +92,6 @@ class FastRcnnLoss(tf.losses.Loss):
                             [分类概率，dx, dy, dw, dh]
             @return: loss_reg tensor(batch_size, 1)
         '''
-        B, num = y_true.shape[0], y_true.shape[1]
-        total = B * num
         #    取预测d[*]
         dx = arrs[:, 1]
         dy = arrs[:, 2]

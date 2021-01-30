@@ -10,6 +10,7 @@ import itertools
 import json
 import os
 import tensorflow as tf
+import collections as collections
 
 import utils.conf as conf
 import utils.alphabet as alphabet
@@ -223,6 +224,37 @@ class ProposalsCreator():
 
 
 
+#    暂存当前迭代的batch_size个y_true
+class ProposalsCrtBatchQueue():
+    '''暂存当前迭代的batch_size个y_true
+        自定义的layer中拿不到y_true，但某些地方确实需要这部分数据（比如roi_pooling）
+        这里暂存最后迭代的batch_size个y_true，先进先出迭代顺序
+        在数据源不使用'打乱'的前提下可保证layer中拿到的y_true是与当前训练数据对应的y_true
+    '''
+    def __init__(self, batch_size=conf.PROPOSALES.get_batch_size(), dtype=tf.float32, ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9)):
+        self._queue = collections.deque(maxlen=batch_size)
+        self._dtype = dtype
+        
+        #    先填充一堆无用数据，过build
+        self.fill_empty(batch_size, ymaps_shape)
+        pass
+    #    先填充maxlen个无用数据，过build
+    def fill_empty(self, maxlen, ymaps_shape):
+        for _ in range(maxlen):
+            self._queue.append(tf.ones(shape=ymaps_shape))
+            pass
+        pass  
+    def push(self, y):
+        self._queue.append(y)
+        pass
+    def crt_data(self):
+        y = tf.convert_to_tensor(list(self._queue), dtype=self._dtype)
+        return y
+    pass
+#    全局位置占个坑
+proposals_crt_batch = None
+
+
 #    建议框jsons文件迭代器
 def read_proposals_generator(image_dir=conf.DATASET.get_in_train(),
                              count=conf.DATASET.get_count_train(),
@@ -230,7 +262,8 @@ def read_proposals_generator(image_dir=conf.DATASET.get_in_train(),
                              is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(),
                              proposal_every_image=conf.PROPOSALES.get_proposal_every_image(),
                              x_preprocess=lambda x:((x / 255.) - 0.5) * 2,
-                             y_preprocess=None):
+                             y_preprocess=None,
+                             proposals_crt_batch_queue=None):
     '''建议框jsons文件迭代器
         @param image_dir: 图片目录
         @param count: 每个proposals_out文件取多少条记录
@@ -239,6 +272,7 @@ def read_proposals_generator(image_dir=conf.DATASET.get_in_train(),
         @param proposal_every_image: 每张图片保留多少建议框
         @param x_preprocess: 图片数据预处理
         @param y_preprocess: 标签数据预处理
+        @param proposals_crt_batch_queue: 暂存y数据（先进先出顺序）
     '''
     label_files = ds.get_fpaths(is_proposal_mutiple_file, proposals_out)
     
@@ -265,6 +299,7 @@ def read_proposals_generator(image_dir=conf.DATASET.get_in_train(),
                 if (len(proposals) > proposal_every_image): proposals = proposals[:proposal_every_image]
                 proposals = np.array(proposals)
                 if (y_preprocess): y = y_preprocess(proposals)
+                if (proposals_crt_batch_queue): proposals_crt_batch_queue.push(y)
                 
                 yield x, y
                 pass
@@ -299,25 +334,34 @@ def fast_rcnn_tensor_db(image_dir=conf.DATASET.get_in_train(),
         @param batch_size: db的batch_size
         @param epochs: db.repear
         @param shuffle_buffer_rate: 打乱数据的buffer是batch_size的多少倍，<0则表示不打乱
+        @return: 数据源, 当前迭代的y暂存器
     '''
+    #    x，y形状
     x_shape = tf.TensorShape([conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3])
     y_shape = tf.TensorShape(ymaps_shape)
+    #    y_true数据暂存，保存最后一个批次的y_true（过y_preprocess后，与y_shape形状相同的tensor对象）的数据
+    #    list长度为batch_size，每个数据都是tensor对象。自定义layer中直接用此队列拿当前迭代y值
+    #    与shuffle无法共用，不能保证打乱后的顺序与先进先出的顺序相同
+    proposals_crt_batch_queue = ProposalsCrtBatchQueue(batch_size=batch_size, ymaps_shape=ymaps_shape)
+    
     db = tf.data.Dataset.from_generator(generator=lambda :read_proposals_generator(image_dir=image_dir,
                                                                                    count=count,
                                                                                    proposals_out=proposals_out,
                                                                                    is_proposal_mutiple_file=is_proposal_mutiple_file,
                                                                                    proposal_every_image=proposal_every_image,
                                                                                    x_preprocess=x_preprocess,
-                                                                                   y_preprocess=y_preprocess), 
+                                                                                   y_preprocess=y_preprocess,
+                                                                                   proposals_crt_batch_queue=proposals_crt_batch_queue), 
                                         output_types=(tf.float32, tf.float32), 
                                         output_shapes=(x_shape, y_shape))
-    #    是否要打乱（其实无所谓了，图片生成时本来就是无序的）
-    if (shuffle_buffer_rate > 0):
-        db = db.shuffle(buffer_size=shuffle_buffer_rate * batch_size)
-        pass
+    #    是否要打乱
+    #    deque那边是先进先出，光打乱一边顺序就不对了
+#     if (shuffle_buffer_rate > 0):
+#         db = db.shuffle(buffer_size=shuffle_buffer_rate * batch_size)
+#         pass
     if (batch_size): db = db.batch(batch_size)
     if (epochs): db = db.repeat(epochs)
-    return db
+    return db, proposals_crt_batch_queue
 
 
 #    取总样本数

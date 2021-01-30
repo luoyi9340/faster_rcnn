@@ -14,6 +14,7 @@ from models.layers.resnet.models import ResNet34, ResNet50
 from models.layers.fast_rcnn.models import FastRCNNLayer
 from models.layers.fast_rcnn.losses import FastRcnnLoss
 from models.layers.fast_rcnn.metrics import FastRcnnMetricCls, FastRcnnMetricReg
+from models.layers.roi_pooling.models import ROIPooling
 from models.layers.roi_pooling.preprocess import roi_pooling
 
 
@@ -46,6 +47,8 @@ class FastRcnnModel(AModel):
                  train_fast_rcnn=True,
                  is_build=False,
                  input_shape=(None, conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3),
+                 train_ycrt_queue=None,
+                 untrain_ycrt_queue=None,
                  **kwargs):
         '''
             @param cnns_name: 使用的cnns层名称
@@ -75,6 +78,9 @@ class FastRcnnModel(AModel):
         self.__train_fast_rcnn = train_fast_rcnn
         self.__learning_rate = learning_rate
         
+        self._train_ycrt_queue = train_ycrt_queue
+        self._untrain_ycrt_queue = untrain_ycrt_queue
+        
         super(FastRcnnModel, self).__init__(name=name, learning_rate=learning_rate, **kwargs)
 
         if (is_build):
@@ -96,13 +102,19 @@ class FastRcnnModel(AModel):
                                  base_channel_num=self.__cnns_base_channel_num)
             pass
         
+        #    装配roi_pooling
+        self.roi_pooling = ROIPooling(input_shape=self.cnns.get_output_shape(),
+                                      train_ycrt_queue=self._train_ycrt_queue,
+                                      untrain_ycrt_queue=self._untrain_ycrt_queue)
+        
         #    装配fast_rcnn
         self.fast_rcnn = FastRCNNLayer(training=self.__train_fast_rcnn,
                                        fc_weights=self.__fc_weights,
                                        fc_layers=self.__fc_layers,
                                        fc_dropout=self.__fc_dropout)
-#         net.add(self.cnns)
-#         net.add(self.fast_rcnn)
+        net.add(self.cnns)
+        net.add(self.roi_pooling)
+        net.add(self.fast_rcnn)
         pass
     
     #    优化器

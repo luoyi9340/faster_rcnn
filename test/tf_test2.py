@@ -7,7 +7,7 @@ Created on 2021年1月27日
 import tensorflow as tf
 
 import utils.math_expand as me
-from models.layers.fast_rcnn.preprocess import takeout_sample_array, roi_pooling
+from models.layers.fast_rcnn.preprocess import takeout_sample_array
 from models.layers.fast_rcnn.metrics import FastRcnnMetricCls, FastRcnnMetricReg
 from models.layers.fast_rcnn.losses import FastRcnnLoss
 
@@ -27,15 +27,15 @@ y_true = tf.convert_to_tensor([
                               ], dtype=tf.float32)
 B, num, C = y_true.shape[0], y_true.shape[1], 4
 total = B * num
-print('B:', B, ' num:', num, ' C:', C)
 y_pred_cls = tf.random.uniform(shape=(B*num, 1, C))
 y_pred_cls = tf.nn.softmax(y_pred_cls)
 y_pred_reg = tf.random.uniform(shape=(B*num, 4, C))
 y_pred = tf.concat([y_pred_cls, y_pred_reg], axis=1)
-print(y_pred)
-#    回归结果
-arrs = takeout_sample_array(y_true, y_pred)
+
+(arrs, total, B, num) = takeout_sample_array(y_true, y_pred)
 print(arrs)
 
-
+fast_rcnn_loss = FastRcnnLoss()
+loss = fast_rcnn_loss(y_true, y_pred)
+print(loss)
 

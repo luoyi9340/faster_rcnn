@@ -5,16 +5,9 @@
 Created on 2021年1月28日
 '''
 import tensorflow as tf
+import collections as collections
 
 
-class TL(tf.keras.layers.Layer):
-    def __init__(self, **kwargs):
-        super(TL, self).__init__(**kwargs)
-        pass
-    def call(self, x, y, **kwargs):
-        return x + y
-    pass
-
-tl = TL()
-y = tl(x=1, y=2)
-print(y)
+y_true = tf.ones(shape=(2, 32, 9))
+B = tf.math.count_nonzero(y_true[:,0,0] + 1)
+print(B)
