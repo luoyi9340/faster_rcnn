@@ -37,7 +37,6 @@ class ROIPooling(tf.keras.layers.Layer):
     
     #    前向
     def call(self, x, training=None, **kwargs):
-        tf.print('in roipooling training:', training)
         #    如果是训练阶段
         if (training):
             y = self._train_ycrt_queue.crt_data()
