@@ -15,7 +15,6 @@ from models.layers.fast_rcnn.models import FastRCNNLayer
 from models.layers.fast_rcnn.losses import FastRcnnLoss
 from models.layers.fast_rcnn.metrics import FastRcnnMetricCls, FastRcnnMetricReg
 from models.layers.roi_pooling.models import ROIPooling
-from models.layers.roi_pooling.preprocess import roi_pooling
 
 
 
@@ -128,174 +127,174 @@ class FastRcnnModel(AModel):
         return [FastRcnnMetricCls(), FastRcnnMetricReg()]
     
     
-    #    训练步骤
-    @tf.function(input_signature=step_signature())
-    def train_step(self, x, y):
-        with tf.GradientTape() as tape:
-            #    先过cnns
-            fmaps = self.cnns(x)
-            #    再过roipooling
-            fmaps_proposals = roi_pooling(fmaps, y, roipooling_ksize=self.__roipooling_ksize)
-            #    建议框过fast_rcnn
-            y_pred = self.fast_rcnn(fmaps_proposals)
-            #    计算loss
-            loss = self._net.loss(y, y_pred)
-            pass
-        #    梯度更新
-        cnns_tvs = self.cnns.trainable_variables
-        fast_rcnn_tvs = self.fast_rcnn.trainable_variables
-        tvs = cnns_tvs + fast_rcnn_tvs
-        grads = tf.gradients(loss, tvs)
-        self._net.optimizer.apply_gradients(zip(grads, tvs))
-        #    计算评价指标
-        logs = self.run_metrics(y, y_pred, tag='train')
-        logs['train_loss'] = loss
-        return logs
-    
-    
-    #    验证步骤
-    @tf.function(input_signature=step_signature())
-    def val_step(self, x, y):
-        #    先过cnns -> 再过roipooling -> 建议框过fast_rcnn -> 计算loss
-        fmaps = self.cnns(x)
-        fmaps_proposals = roi_pooling(fmaps, y, roipooling_ksize=self.__roipooling_ksize)
-        y_pred = self.fast_rcnn(fmaps_proposals)
-        loss = self._net.loss(y, y_pred)
-        #    计算评价
-        logs = self.run_metrics(y, y_pred, tag='val')
-        logs['val_loss'] = loss
-        return logs
-    
-    
-    #    计算评价指标
-    def run_metrics(self, y_true, y_pred, tag='train'):
-        logs = {}
-        for metric in self._metrics:
-            metric(y_true, y_pred)
-            logs[tag + '_' + metric.name] = metric.result()
-            pass
-        return logs
-    
-    
-    #    一轮epoch后重置各种参数
-    def reset_after_epoch(self):
-        #    重置评价指标
-        for metric in self._metrics:
-            metric.reset_states()
-            pass
-        pass
-    
-    
-    #    自定义训练过程
-    def custom_train(self,
-                     db_train=None,
-                     db_val=None,
-                     batch_size=conf.PROPOSALES.get_batch_size(),
-                     epochs=conf.PROPOSALES.get_epochs(),
-                     steps_per_epoch=100,
-                     tensorboard_dir=conf.FAST_RCNN.get_tensorboard_dir()):
-        '''自定义训练过程
-            @param db_train: 训练集
-            @param db_val: 验证集
-            @param batch_size: 训练集batch_size
-            @param epochs: 训练epochs
-            @param steps_per_epoch: 每轮epochs要训练多少步
-        '''
-        callbacks = self.callback_list(batch_size=batch_size, epochs=epochs, steps_per_epoch=steps_per_epoch)
-        tensorboard_dir = tensorboard_dir + "/" + self.model_name() + "_b" + str(batch_size) + "_lr" + str(self.__learning_rate)
-        train_summary_writer = tf.summary.create_file_writer(tensorboard_dir + "/train")
-        val_summary_writer = tf.summary.create_file_writer(tensorboard_dir + '/validation')
-        
-        #    训练开始
-        callbacks.on_train_begin()
-        db_iter = iter(db_train)
-        for epoch in range(epochs):
-            #    训练过程中记录的日志
-            logs = {}
-            #    epoch开始
-            callbacks.on_epoch_begin(epoch, logs)
-            
-            for step in range(steps_per_epoch):
-                x, y = db_iter.next()
-                crt_step = epoch * steps_per_epoch + step
-                print('crt_step:', crt_step)
-                #    每轮训练batch开始
-                callbacks.on_train_batch_begin(step, logs)
-                #    执行训练步骤
-                train_logs = self.train_step(x, y)
-                logs.update(train_logs)
-                #    记录需要观测的值
-                for k,v in train_logs.items():
-                    tf.summary.scalar(k, v, step=crt_step)
-                    pass
-                #   记录每次batch的lr
-                tf.summary.scalar('lr', self._net.optimizer.lr, step=crt_step) 
-                
-                #    每轮训练batch结束
-                callbacks.on_train_batch_end(step, logs)
-                pass
-            
-            #    验证开始
-            callbacks.on_test_begin(logs)
-            step = 0
-            val_loss = 0
-            val_cls_acc = 0
-            val_reg_mae = 0
-            for x, y in db_val:
-                #    每轮验证开始
-                callbacks.on_test_batch_begin(step, logs)
-                #    执行验证步骤
-                val_logs = self.val_step(x, y)
-                #    记录验证损失，验证评价指标
-                val_loss += val_logs.get('val_loss')
-                val_cls_acc += val_logs.get('val_FastRcnnMetricCls')
-                val_reg_mae += val_logs.get('val_FastRcnnMetricReg')
-                
-                #    每轮验证结束
-                callbacks.on_test_batch_end(step, logs)
-                step += 1
-                pass
-            val_loss = val_loss / step
-            tf.summary.scalar('val_loss', val_loss, step=epoch) 
-            logs['val_loss'] = val_loss
-            val_cls_acc = val_cls_acc / step
-            tf.summary.scalar('val_cls_acc', val_cls_acc, step=epoch) 
-            logs['val_cls_acc'] = val_cls_acc
-            val_reg_mae = val_reg_mae / step
-            tf.summary.scalar('val_reg_mae', val_reg_mae, step=epoch) 
-            logs['val_reg_mae'] = val_reg_mae
-            
-            #    验证结束
-            callbacks.on_test_end(logs)
-            
-            #    epoch结束
-            callbacks.on_epoch_end(epoch, logs)
-            
-            #    重置各种参数
-            self.reset_after_epoch()
-            pass
-        #    训练结束
-        callbacks.on_train_end(logs)
-        pass
-    
-    
-    #    各种回调
-    def callback_list(self, batch_size, epochs, steps_per_epoch):
-        '''各种回调'''
-        callback_list = self.callbacks(auto_save_weights_after_traind=True, 
-                                       auto_save_weights_dir=conf.FAST_RCNN.get_save_weights_dir(),
-                                       auto_learning_rate_schedule=True, 
-                                       auto_tensorboard=True, 
-                                       auto_tensorboard_dir=conf.FAST_RCNN.get_tensorboard_dir(), 
-                                       batch_size=batch_size)
-        callbacks = tf.keras.callbacks.CallbackList(callbacks=callback_list,
-                                                    add_history=True,
-                                                    add_progbar=1,
-                                                    verbose=1,
-                                                    epochs=epochs,
-                                                    model=self._net,
-                                                    steps=steps_per_epoch)
-        return callbacks
+#     #    训练步骤
+#     @tf.function(input_signature=step_signature())
+#     def train_step(self, x, y):
+#         with tf.GradientTape() as tape:
+#             #    先过cnns
+#             fmaps = self.cnns(x)
+#             #    再过roipooling
+#             fmaps_proposals = roi_pooling(fmaps, y, roipooling_ksize=self.__roipooling_ksize)
+#             #    建议框过fast_rcnn
+#             y_pred = self.fast_rcnn(fmaps_proposals)
+#             #    计算loss
+#             loss = self._net.loss(y, y_pred)
+#             pass
+#         #    梯度更新
+#         cnns_tvs = self.cnns.trainable_variables
+#         fast_rcnn_tvs = self.fast_rcnn.trainable_variables
+#         tvs = cnns_tvs + fast_rcnn_tvs
+#         grads = tf.gradients(loss, tvs)
+#         self._net.optimizer.apply_gradients(zip(grads, tvs))
+#         #    计算评价指标
+#         logs = self.run_metrics(y, y_pred, tag='train')
+#         logs['train_loss'] = loss
+#         return logs
+#     
+#     
+#     #    验证步骤
+#     @tf.function(input_signature=step_signature())
+#     def val_step(self, x, y):
+#         #    先过cnns -> 再过roipooling -> 建议框过fast_rcnn -> 计算loss
+#         fmaps = self.cnns(x)
+#         fmaps_proposals = roi_pooling(fmaps, y, roipooling_ksize=self.__roipooling_ksize)
+#         y_pred = self.fast_rcnn(fmaps_proposals)
+#         loss = self._net.loss(y, y_pred)
+#         #    计算评价
+#         logs = self.run_metrics(y, y_pred, tag='val')
+#         logs['val_loss'] = loss
+#         return logs
+#     
+#     
+#     #    计算评价指标
+#     def run_metrics(self, y_true, y_pred, tag='train'):
+#         logs = {}
+#         for metric in self._metrics:
+#             metric(y_true, y_pred)
+#             logs[tag + '_' + metric.name] = metric.result()
+#             pass
+#         return logs
+#     
+#     
+#     #    一轮epoch后重置各种参数
+#     def reset_after_epoch(self):
+#         #    重置评价指标
+#         for metric in self._metrics:
+#             metric.reset_states()
+#             pass
+#         pass
+#     
+#     
+#     #    自定义训练过程
+#     def custom_train(self,
+#                      db_train=None,
+#                      db_val=None,
+#                      batch_size=conf.PROPOSALES.get_batch_size(),
+#                      epochs=conf.PROPOSALES.get_epochs(),
+#                      steps_per_epoch=100,
+#                      tensorboard_dir=conf.FAST_RCNN.get_tensorboard_dir()):
+#         '''自定义训练过程
+#             @param db_train: 训练集
+#             @param db_val: 验证集
+#             @param batch_size: 训练集batch_size
+#             @param epochs: 训练epochs
+#             @param steps_per_epoch: 每轮epochs要训练多少步
+#         '''
+#         callbacks = self.callback_list(batch_size=batch_size, epochs=epochs, steps_per_epoch=steps_per_epoch)
+#         tensorboard_dir = tensorboard_dir + "/" + self.model_name() + "_b" + str(batch_size) + "_lr" + str(self.__learning_rate)
+#         train_summary_writer = tf.summary.create_file_writer(tensorboard_dir + "/train")
+#         val_summary_writer = tf.summary.create_file_writer(tensorboard_dir + '/validation')
+#         
+#         #    训练开始
+#         callbacks.on_train_begin()
+#         db_iter = iter(db_train)
+#         for epoch in range(epochs):
+#             #    训练过程中记录的日志
+#             logs = {}
+#             #    epoch开始
+#             callbacks.on_epoch_begin(epoch, logs)
+#             
+#             for step in range(steps_per_epoch):
+#                 x, y = db_iter.next()
+#                 crt_step = epoch * steps_per_epoch + step
+#                 print('crt_step:', crt_step)
+#                 #    每轮训练batch开始
+#                 callbacks.on_train_batch_begin(step, logs)
+#                 #    执行训练步骤
+#                 train_logs = self.train_step(x, y)
+#                 logs.update(train_logs)
+#                 #    记录需要观测的值
+#                 for k,v in train_logs.items():
+#                     tf.summary.scalar(k, v, step=crt_step)
+#                     pass
+#                 #   记录每次batch的lr
+#                 tf.summary.scalar('lr', self._net.optimizer.lr, step=crt_step) 
+#                 
+#                 #    每轮训练batch结束
+#                 callbacks.on_train_batch_end(step, logs)
+#                 pass
+#             
+#             #    验证开始
+#             callbacks.on_test_begin(logs)
+#             step = 0
+#             val_loss = 0
+#             val_cls_acc = 0
+#             val_reg_mae = 0
+#             for x, y in db_val:
+#                 #    每轮验证开始
+#                 callbacks.on_test_batch_begin(step, logs)
+#                 #    执行验证步骤
+#                 val_logs = self.val_step(x, y)
+#                 #    记录验证损失，验证评价指标
+#                 val_loss += val_logs.get('val_loss')
+#                 val_cls_acc += val_logs.get('val_FastRcnnMetricCls')
+#                 val_reg_mae += val_logs.get('val_FastRcnnMetricReg')
+#                 
+#                 #    每轮验证结束
+#                 callbacks.on_test_batch_end(step, logs)
+#                 step += 1
+#                 pass
+#             val_loss = val_loss / step
+#             tf.summary.scalar('val_loss', val_loss, step=epoch) 
+#             logs['val_loss'] = val_loss
+#             val_cls_acc = val_cls_acc / step
+#             tf.summary.scalar('val_cls_acc', val_cls_acc, step=epoch) 
+#             logs['val_cls_acc'] = val_cls_acc
+#             val_reg_mae = val_reg_mae / step
+#             tf.summary.scalar('val_reg_mae', val_reg_mae, step=epoch) 
+#             logs['val_reg_mae'] = val_reg_mae
+#             
+#             #    验证结束
+#             callbacks.on_test_end(logs)
+#             
+#             #    epoch结束
+#             callbacks.on_epoch_end(epoch, logs)
+#             
+#             #    重置各种参数
+#             self.reset_after_epoch()
+#             pass
+#         #    训练结束
+#         callbacks.on_train_end(logs)
+#         pass
+#     
+#     
+#     #    各种回调
+#     def callback_list(self, batch_size, epochs, steps_per_epoch):
+#         '''各种回调'''
+#         callback_list = self.callbacks(auto_save_weights_after_traind=True, 
+#                                        auto_save_weights_dir=conf.FAST_RCNN.get_save_weights_dir(),
+#                                        auto_learning_rate_schedule=True, 
+#                                        auto_tensorboard=True, 
+#                                        auto_tensorboard_dir=conf.FAST_RCNN.get_tensorboard_dir(), 
+#                                        batch_size=batch_size)
+#         callbacks = tf.keras.callbacks.CallbackList(callbacks=callback_list,
+#                                                     add_history=True,
+#                                                     add_progbar=1,
+#                                                     verbose=1,
+#                                                     epochs=epochs,
+#                                                     model=self._net,
+#                                                     steps=steps_per_epoch)
+#         return callbacks
     pass
 
 
