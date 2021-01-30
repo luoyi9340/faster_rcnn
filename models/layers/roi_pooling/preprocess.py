@@ -16,7 +16,7 @@ def roi_pooling(fmaps, y_true, roipooling_ksize=[7, 7]):
                             [分类索引, proposal左上/右下点坐标(相对特征图), proposal偏移比/缩放比]
                             [vidx, xl,yl,xr,yr, tx,th,tw,th]
                         ]
-        @return: tensor(batch_suze, num, roipooling_ksize[0], roipooling_ksize[1], C)
+        @return: tensor(batch_size, num, roipooling_ksize[0], roipooling_ksize[1], C)
     '''
     #    取必要的参数
     H, W = fmaps.shape[1], fmaps.shape[2]                                   #    特征图宽高

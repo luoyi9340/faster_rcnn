@@ -20,7 +20,6 @@ class ROIPooling(tf.keras.layers.Layer):
                  train_ycrt_queue=None, 
                  untrain_ycrt_queue=None,
                  input_shape=None,
-                 output_shape=None,
                  **kwargs):
         '''roi pooling层
             @param kernel_size: 输出的特征图
@@ -36,6 +35,15 @@ class ROIPooling(tf.keras.layers.Layer):
         self._untrain_ycrt_queue = untrain_ycrt_queue
         pass
     
+    #    编辑输出尺寸
+    def compute_output_shape(self, input_shape):
+        y_shape = None
+        if (self._train_ycrt_queue): y_shape = self._train_ycrt_queue.crt_data().shape
+        elif (self._untrain_ycrt_queue): y_shape = self._untrain_ycrt_queue.crt_data().shape
+        
+        _, num, C = y_shape[0], y_shape[1], input_shape[-1]
+        return (None, num, self.__kernel_size[0], self.__kernel_size[1], C)
+    
     #    前向
     def call(self, x, training=None, **kwargs):
         #    如果是训练阶段
@@ -45,8 +53,6 @@ class ROIPooling(tf.keras.layers.Layer):
         else:
             y = self._untrain_ycrt_queue.crt_data()
             pass
-#         tf.print('training:', training)
-#         tf.print('in roipooling y:', y)
         return roi_pooling(x, y, roipooling_ksize=self.__kernel_size)
     
     pass

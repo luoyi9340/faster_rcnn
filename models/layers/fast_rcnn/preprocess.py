@@ -91,6 +91,7 @@ def takeout_sample_array(y_true, y_pred):
     idx_ = tf.range(total, dtype=tf.int32)
     idxes = tf.stack([idx_, vidx], axis=1)
     arrs = tf.gather_nd(y_pred, indices=idxes)  
+    
     return (arrs, total, B, num)
 
 
