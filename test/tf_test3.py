@@ -6,12 +6,14 @@ Created on 2021年1月28日
 '''
 import tensorflow as tf
 import collections as collections
+import numpy as np
+
+#    print时不用科学计数法表示
+np.set_printoptions(suppress=True)  
 
 
-a = tf.random.uniform(shape=(1, 3), minval=1, maxval=10)
-a = tf.convert_to_tensor([-10,0,10], tf.float32)
-a = tf.random.normal(shape=(1))
-print(a)
+a = tf.random.normal(shape=(1, 100000), mean=0, stddev=10)
+# print(a)
 mean, variance = tf.nn.moments(a, axes=-1) 
 print(mean, variance)
 a = tf.nn.batch_normalization(a,mean=mean,
@@ -19,5 +21,7 @@ a = tf.nn.batch_normalization(a,mean=mean,
                                 offset=0,
                                 scale=1,
                                 variance_epsilon=0)
-print(a)
+mean, variance = tf.nn.moments(a, axes=-1) 
+print(mean, variance)
+print(a[a > 1])
 

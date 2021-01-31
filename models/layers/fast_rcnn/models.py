@@ -43,7 +43,6 @@ class FastRCNNLayer(tf.keras.layers.Layer):
                  name='FastRCNN', 
                  training=True, 
                  fc_weights=conf.FAST_RCNN.get_fc_weights(),
-                 fc_layers=conf.FAST_RCNN.get_fc_layers(),
                  fc_dropout=conf.FAST_RCNN.get_fc_dropout(),
                  kernel_initializer=tf.initializers.he_normal(), 
                  bias_initializer=tf.initializers.Zeros(), 
@@ -54,28 +53,30 @@ class FastRCNNLayer(tf.keras.layers.Layer):
         self.__input_shape = input_shape
         
         #    装配网络
-        self.__assembling(fc_weights, fc_layers, fc_dropout, kernel_initializer, bias_initializer)
+        self.__assembling(fc_weights, fc_dropout, kernel_initializer, bias_initializer)
         self.trainable = training
         
         pass
     
     #    装配网络
-    def __assembling(self, fc_weights, fc_layers, fc_dropout, kernel_initializer=tf.initializers.he_normal(), bias_initializer=tf.initializers.Zeros()):
+    def __assembling(self, fc_weights, fc_dropout, kernel_initializer=tf.initializers.he_normal(), bias_initializer=tf.initializers.Zeros()):
         #    装配fc层
         self.__fc_layers = tf.keras.models.Sequential(name='fast_rcnn_fc_layers')
         self.__fc_layers.add(tf.keras.layers.Flatten(name='fast_rcnn_fc_layers_flatten', input_shape=self.__input_shape))
-        for i in range(fc_layers):
+        i = 0
+        for fc_weight in fc_weights:
             self.__fc_layers.add(tf.keras.layers.Dense(name='fast_rcnn_fc_layers_fc_' + str(i), 
-                                                       units=fc_weights,
+                                                       units=fc_weight,
                                                        activation=tf.keras.activations.relu,
                                                        kernel_initializer=kernel_initializer,
                                                        bias_initializer=bias_initializer))
             self.__fc_layers.add(tf.keras.layers.BatchNormalization(name='fast_rcnn_fc_layers_bn_' + str(i)))
             #    最后一层不追加dropout
             if (fc_dropout < 1 and fc_dropout > 0 \
-                and i < fc_layers - 1):
+                and i < len(fc_weights) - 1):
                 self.__fc_layers.add(tf.keras.layers.Dropout(name='fast_rcnn_fc_layers_dropout_' + str(i), rate=fc_dropout))
                 pass
+            i += 1
             pass
         
         #    装配cls分支

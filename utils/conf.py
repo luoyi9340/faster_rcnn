@@ -81,7 +81,6 @@ def load_conf_yaml(yaml_path=CONF_PATH):
     fast_rcnn = FastRcnn(c['fast_rcnn']['roipooling_kernel_size'],
                          c['fast_rcnn']['loss_lamda'],
                          c['fast_rcnn']['fc_weights'],
-                         c['fast_rcnn']['fc_layers'],
                          c['fast_rcnn']['fc_dropout'],
                          c['fast_rcnn']['cnns'],
                          c['fast_rcnn']['save_weights_dir'],
@@ -266,7 +265,6 @@ class FastRcnn():
                  roipooling_kernel_size=[7, 7],
                  loss_lamda=1,
                  fc_weights=4096,
-                 fc_layers=4,
                  fc_dropout=0.8,
                  cnns='resnet34',
                  save_weights_dir='temp/models/fast_rcnn',
@@ -274,7 +272,6 @@ class FastRcnn():
         self.__roipooling_kernel_size = roipooling_kernel_size
         self.__loss_lamda = loss_lamda
         self.__fc_weights = fc_weights
-        self.__fc_layers = fc_layers
         self.__fc_dropout = fc_dropout
         self.__cnns = cnns
         self.__save_weights_dir = save_weights_dir
@@ -283,7 +280,6 @@ class FastRcnn():
     def get_roipooling_kernel_size(self): return self.__roipooling_kernel_size
     def get_loss_lamda(self): return self.__loss_lamda
     def get_fc_weights(self): return self.__fc_weights
-    def get_fc_layers(self): return self.__fc_layers
     def get_fc_dropout(self): return self.__fc_dropout
     def get_cnns(self): return self.__cnns
     def get_save_weights_dir(self): return convert_to_abspath(self.__save_weights_dir)

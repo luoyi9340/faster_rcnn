@@ -111,10 +111,12 @@ fast_rcnn:
    #   loss = loss_cls + λ * loss_reg中间的那个λ
    loss_lamda: 0.1
    train_learning_rate: 0.001
-   #   每层全连接参数维度
-   fc_weights: 1024
-   #   全连接层数
-   fc_layers: 4
+   #   每层全连接参数维度（同时确定fc层数）
+   fc_weights: 
+      - 1024
+      - 512
+      - 256
+      - 128
    #   dropout保留占比
    fc_dropout: 1
    #   用的什么cnns网络（resnet34 | resnet50）

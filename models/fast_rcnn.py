@@ -38,7 +38,6 @@ class FastRcnnModel(AModel):
                  scaling=conf.CNNS.get_feature_map_scaling(), 
                  cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
                  fc_weights=conf.FAST_RCNN.get_fc_weights(),
-                 fc_layers=conf.FAST_RCNN.get_fc_layers(),
                  fc_dropout=conf.FAST_RCNN.get_fc_dropout(),
                  roipooling_ksize=conf.FAST_RCNN.get_roipooling_kernel_size(),
                  loss_lamda=conf.FAST_RCNN.get_loss_lamda(),
@@ -54,7 +53,6 @@ class FastRcnnModel(AModel):
             @param scaling: cnns层的缩放比例。据此算出cnns层的深度
             @param cnns_base_channel_num: cnns层的基础通道数，据此算出cnns层的通道深度
             @param fc_weights: fast_rcnn中fc层的参数维度
-            @param fc_layers: fast_rcnn中fc层数量
             @param fc_dropout: fast_rcnn中fc层dropout比率
             @param roipooling_kernel_size: roipooling的ksize
             @param train_cnns: 是否训练cnns网络
@@ -68,7 +66,6 @@ class FastRcnnModel(AModel):
         self.rpn = None
         
         self.__fc_weights = fc_weights
-        self.__fc_layers = fc_layers
         self.__fc_dropout = fc_dropout
         self.__roipooling_ksize = roipooling_ksize
         self.__loss_lamda = loss_lamda
@@ -109,7 +106,6 @@ class FastRcnnModel(AModel):
         #    装配fast_rcnn
         self.fast_rcnn = FastRCNNLayer(training=self.__train_fast_rcnn,
                                        fc_weights=self.__fc_weights,
-                                       fc_layers=self.__fc_layers,
                                        fc_dropout=self.__fc_dropout)
         net.add(self.cnns)
         net.add(self.roi_align)
