@@ -189,7 +189,7 @@ class ResNet34(tf.keras.layers.Layer):
         if (math.ceil(x_w / self.__scaling) != int(y_w)
             or math.ceil(x_h / self.__scaling) != int(y_h)):
             raise Exception(self.name + " scaling error. scaling:" + str(self.__scaling) + ". x.shape:" + str(x.shape) + " y.shape:" + str(y.shape))
-      
+        
         return y
     
     #    输出shape，根据缩放等级不同可能不一样

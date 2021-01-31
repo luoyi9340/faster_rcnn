@@ -18,7 +18,7 @@ import utils.conf as conf
 import data.dataset_rois as ds_rois
 import data.dataset_proposals as ds_proposals
 from models.layers.fast_rcnn.preprocess import preprocess_like_array
-from models.layers.roi_pooling.preprocess import roi_pooling
+from models.layers.pooling.preprocess import roi_align
 
 
 #    验算proposal。从json读出来的proposal在原图上打出来看哈
@@ -88,6 +88,13 @@ def show_img(X, proposales, is_show_proposales=True, is_show_labels=True, featur
     plot.show()
     pass
 
+#    打印长宽比看看
+def show_wh(x, y):
+#     w = np.abs(y[:,3] - y[:,1])
+#     h = np.abs(y[:,4] - y[:,2])
+#     print(*zip(w, h))
+    pass
+
 
 show_idx = 2
 idx = 0
@@ -95,8 +102,9 @@ for x, y in db_train:
     if (idx < show_idx):
         idx += 1
         continue
-    
-    show_img(x[0], y[0], is_show_proposales=False, is_show_labels=True)
+    show_wh(y[0])
+    show_wh(y[1])
+#     show_img(x[0], y[0], is_show_proposales=False, is_show_labels=True)
     break
     pass
 

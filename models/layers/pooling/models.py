@@ -54,6 +54,7 @@ class ROIAlign(tf.keras.layers.Layer):
         else:
             y = self._untrain_ycrt_queue.crt_data()
             pass
+        
         return roi_align(x, y, roipooling_ksize=self.__kernel_size)
     
     pass

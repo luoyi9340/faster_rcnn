@@ -22,6 +22,7 @@ def roi_align(fmaps, y_true, roipooling_ksize=[7, 7]):
     #    取必要的参数
     H, W, _ = fmaps.shape[1], fmaps.shape[2], fmaps.shape[3]                #    特征图宽高
     B, num = y_true.shape[0], y_true.shape[1]                               #    batch_size, 每个batch_size中的proposal数
+#     crop_size = (roipooling_ksize[0] * 2, roipooling_ksize[1] * 2)
     crop_size = roipooling_ksize
     
     #    将特征图统一切成roipooling_ksize * 2的大小
@@ -36,5 +37,11 @@ def roi_align(fmaps, y_true, roipooling_ksize=[7, 7]):
     boxes = tf.reshape(boxes, shape=(B*num, 4))
     #    抠图，并用双线性插值reshape
     crops = tf.image.crop_and_resize(fmaps, boxes=boxes, box_indices=binx, crop_size=crop_size)
+#     crops = tf.nn.max_pool(crops, ksize=[2,2], strides=2, padding='VALID')
     return crops
+
+
+#    roi pooling
+def roi_pooling(fmaps, y_true, roipooling_ksize=[7, 7]):
+    pass
 
