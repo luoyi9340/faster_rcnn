@@ -19,10 +19,10 @@ def preprocess_like_array(y_true, feature_map_scaling=8):
                         ]
         @param feature_map_scaling: 特征图相对原图缩放比例
         @return numpy(num, 9)
-                    [
-                        [分类索引, proposal左上/右下点坐标(相对特征图), proposal偏移比/缩放比]
-                        [vidx, xl,yl,xr,yr, tx,th,tw,th]
-                    ]
+                        [
+                            [分类索引, proposal左上/右下点坐标(相对特征图), proposal偏移比/缩放比]
+                            [vidx, xl,yl,xr,yr, tx,th,tw,th]
+                        ]
     '''
     y_true = np.array(y_true)
     #    分类索引

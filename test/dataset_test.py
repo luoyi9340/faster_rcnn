@@ -9,113 +9,95 @@
 Created on 2021年1月22日
 '''
 import tensorflow as tf
+import numpy as np
 import math
 import collections as collections
+import matplotlib.pyplot as plot
 
 import utils.conf as conf
 import data.dataset_rois as ds_rois
 import data.dataset_proposals as ds_proposals
 from models.layers.fast_rcnn.preprocess import preprocess_like_array
-import test
+from models.layers.roi_pooling.preprocess import roi_pooling
 
 
-batch_size = 2
-epochs = 2
-count = 100
-steps_per_epoch = math.ceil(count / batch_size)
-print(steps_per_epoch)
-# db_train = ds_proposals.fast_rcnn_tensor_db(image_dir=conf.DATASET.get_in_train(), 
-#                                             count=count, 
-#                                             proposals_out=conf.PROPOSALES.get_train_proposal_out(), 
-#                                             is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
-#                                             proposal_every_image=conf.PROPOSALES.get_proposal_every_image(), 
-#                                             batch_size=batch_size, 
-#                                             epochs=epochs, 
-#                                             shuffle_buffer_rate=conf.PROPOSALES.get_shuffle_buffer_rate(), 
-#                                             ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9), 
-#                                             x_preprocess=lambda x:((x / 255.) - 0.5) * 2, 
-#                                             y_preprocess=lambda y:preprocess_like_array(y, feature_map_scaling=conf.CNNS.get_feature_map_scaling()))
-# db_iter = iter(db_train)
-# step = 0
-# for step in range(steps_per_epoch):
-#     d = db_iter.next()
-#     print(d[0].shape)
-#     print(d[1].shape)
-#     pass
-# print(step)
+#    验算proposal。从json读出来的proposal在原图上打出来看哈
+batch_size = conf.PROPOSALES.get_batch_size()
+epochs = conf.PROPOSALES.get_epochs()
+total_samples = ds_proposals.total_samples(proposal_out=conf.PROPOSALES.get_train_proposal_out(), 
+                                           is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
+                                           count=conf.DATASET.get_count_train(), 
+                                           proposal_every_image=conf.PROPOSALES.get_proposal_every_image())
+train_count = conf.DATASET.get_count_train()
+db_train, train_y_crt_queue = ds_proposals.fast_rcnn_tensor_db(image_dir=conf.DATASET.get_in_train(), 
+                                                                count=train_count, 
+                                                                proposals_out=conf.PROPOSALES.get_train_proposal_out(), 
+                                                                is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
+                                                                proposal_every_image=conf.PROPOSALES.get_proposal_every_image(), 
+                                                                batch_size=batch_size, 
+                                                                epochs=epochs, 
+                                                                shuffle_buffer_rate=conf.PROPOSALES.get_shuffle_buffer_rate(), 
+                                                                ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9), 
+                                                                x_preprocess=lambda x:((x / 255.) - 0.5) * 2, 
+                                                                y_preprocess=lambda y:preprocess_like_array(y, feature_map_scaling=conf.CNNS.get_feature_map_scaling()),
+#                                                                 y_preprocess=None
+                                                                )
 
-class CrtYQueue():
-    def __init__(self, batch_size, y_shape=None):
-        self._queue = collections.deque(maxlen=batch_size)
-        
-        #    填充一些空置进去，为了过build
-        self.fill_empty(batch_size, y_shape)
-        pass
-    def fill_empty(self, batch_size, y_shape):
-        for _ in range(batch_size):
-            self._queue.append(tf.ones(shape=y_shape))
-            pass
-        pass
-    def push(self, y):
-        self._queue.append(y)
-        pass
-    def crt_data(self):
-        y = tf.convert_to_tensor(list(self._queue), dtype=tf.int32)
-        return y
-    pass
-
-
-def range_generator(count=100, crt_y_queue=None):
-    for i in range(count):
-        crt_y_queue.push([i])
-        yield i, i
-        pass
-    pass
-shape = tf.convert_to_tensor(1).shape
-crt_y_queue = CrtYQueue(batch_size=batch_size, y_shape=shape)
-val_y_queue = CrtYQueue(batch_size=batch_size, y_shape=shape)
-db = tf.data.Dataset.from_generator(generator=lambda :range_generator(count=count, crt_y_queue=crt_y_queue), 
-                                    output_types=(tf.int32, tf.int32), 
-                                    output_shapes=(tf.TensorShape(shape), tf.TensorShape(shape)))
-db = db.batch(batch_size=batch_size)
-db = db.repeat(epochs)
-db_val = tf.data.Dataset.from_generator(generator=lambda :range_generator(count=10, crt_y_queue=val_y_queue), 
-                                    output_types=(tf.int32, tf.int32), 
-                                    output_shapes=(tf.TensorShape(shape), tf.TensorShape(shape)))
-db_val = db_val.batch(batch_size=batch_size)
-db_val = db_val.repeat(epochs)
-
-class TestLayer(tf.keras.layers.Layer):
-    def __init__(self, y_queue=None, val_queue=None):
-        super(TestLayer, self).__init__(name='test_layer', dynamic=True)
-        self._y_queue = y_queue
-        self._val_queue = val_queue
-        pass
-    def call(self, x, training=None, **kwargs):
-        if (training):
-            y = self._y_queue.crt_data()
-            pass
-        else:
-            y = self._val_queue.crt_data()
+#    图片展示
+#    图片展示
+def show_img(X, proposales, is_show_proposales=True, is_show_labels=True, feature_map_scaling=conf.CNNS.get_feature_map_scaling()):
+    X = X / 2. + 0.5
+    
+    fig = plot.figure()
+    ax = fig.add_subplot(1,1,1)
+    
+    label_dict = {}
+    for proposale in proposales:
+        if (is_show_proposales):
+            x = proposale[1] * feature_map_scaling
+            y = proposale[2] * feature_map_scaling
+            w = np.abs(proposale[3] * feature_map_scaling - proposale[1] * feature_map_scaling)
+            h = np.abs(proposale[4] * feature_map_scaling - proposale[2] * feature_map_scaling)
+            rect = plot.Rectangle((x, y), w, h, fill=False, edgecolor = 'red',linewidth=1)
+            ax.add_patch(rect)
             pass
         
-        tf.print('---------------------training:' + str(training) + '-----------------------')
-        tf.print('x:', x)
-        tf.print('y:', y)
-        return y
+        if (is_show_labels):
+            if (label_dict.get(proposale.numpy()[0]) is None):
+                label_dict[proposale.numpy()[0]] = 1
+                  
+                tx = proposale[5]
+                ty = proposale[6]
+                tw = proposale[7]
+                th = proposale[8]
+                Px = proposale[1] * feature_map_scaling
+                Py = proposale[2] * feature_map_scaling
+                Pw = np.abs(proposale[3] * feature_map_scaling - proposale[1] * feature_map_scaling)
+                Ph = np.abs(proposale[4] * feature_map_scaling - proposale[2] * feature_map_scaling)
+                x = tx / Pw + Px
+                y = ty / Ph + Py
+                w = math.exp(tw) * Pw
+                h = math.exp(th) * Ph
+                rect = plot.Rectangle((x, y), w, h, fill=False, edgecolor = 'blue',linewidth=1)
+                ax.add_patch(rect)
+                pass
+            pass
+        pass
+    
+    plot.imshow(X)
+    plot.show()
     pass
 
-net = tf.keras.models.Sequential([
-    TestLayer(y_queue=crt_y_queue, val_queue=val_y_queue)
-    ])
-net.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01), 
-            loss=tf.losses.MSE, 
-            metrics=[tf.metrics.MSE])
 
-his = net.fit_generator(db, 
-                        validation_data=db_val,
-                        steps_per_epoch=count / batch_size, 
-                        epochs=epochs, 
-                        verbose=1)
-print(his.history)
+show_idx = 2
+idx = 0
+for x, y in db_train:
+    if (idx < show_idx):
+        idx += 1
+        continue
+    
+    show_img(x[0], y[0], is_show_proposales=False, is_show_labels=True)
+    break
+    pass
+
 

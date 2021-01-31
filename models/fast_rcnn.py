@@ -14,7 +14,7 @@ from models.layers.resnet.models import ResNet34, ResNet50
 from models.layers.fast_rcnn.models import FastRCNNLayer
 from models.layers.fast_rcnn.losses import FastRcnnLoss
 from models.layers.fast_rcnn.metrics import FastRcnnMetricCls, FastRcnnMetricReg
-from models.layers.roi_pooling.models import ROIPooling
+from models.layers.pooling.models import ROIAlign
 
 
 
@@ -102,7 +102,7 @@ class FastRcnnModel(AModel):
             pass
         
         #    装配roi_pooling
-        self.roi_pooling = ROIPooling(input_shape=self.cnns.get_output_shape(),
+        self.roi_align = ROIAlign(input_shape=self.cnns.get_output_shape(),
                                       train_ycrt_queue=self._train_ycrt_queue,
                                       untrain_ycrt_queue=self._untrain_ycrt_queue)
         
@@ -112,7 +112,7 @@ class FastRcnnModel(AModel):
                                        fc_layers=self.__fc_layers,
                                        fc_dropout=self.__fc_dropout)
         net.add(self.cnns)
-        net.add(self.roi_pooling)
+        net.add(self.roi_align)
         net.add(self.fast_rcnn)
         pass
     

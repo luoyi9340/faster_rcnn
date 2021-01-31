@@ -187,8 +187,7 @@ class ProposalsCreator():
                     label_path='', 
                     is_mutiple_file=False, 
                     count=100,
-                    x_preprocess=lambda x:((x /255.) - 0.5) * 2,
-                    not_enough_preprocess=None):
+                    x_preprocess=lambda x:((x /255.) - 0.5) * 2):
         '''根据标签文件生成建议框
             @param proposals_out: 写入json文件路径
             @param image_dir: 图片文件目录
@@ -212,8 +211,7 @@ class ProposalsCreator():
                 x, proposals = self.__create_single(img_path=img_path, 
                                                     vcode=vcode, 
                                                     labels=labels, 
-                                                    x_preprocess=x_preprocess,
-                                                    not_enough_preprocess=not_enough_preprocess)
+                                                    x_preprocess=x_preprocess)
                 
                 yield x, proposals
                 pass
@@ -297,7 +295,7 @@ def read_proposals_generator(image_dir=conf.DATASET.get_in_train(),
                 proposals = d['proposals']
                 assert (len(proposals) >= proposal_every_image), 'proposals.count:{} less then conf.proposal_every_image:{} file_name:{}'.format(len(proposals), proposal_every_image, file_name)
                 if (len(proposals) > proposal_every_image): proposals = proposals[:proposal_every_image]
-                proposals = np.array(proposals)
+                y = np.array(proposals)
                 if (y_preprocess): y = y_preprocess(proposals)
                 if (proposals_crt_batch_queue): proposals_crt_batch_queue.push(y)
                 

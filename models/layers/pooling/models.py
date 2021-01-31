@@ -9,13 +9,13 @@ Created on 2021年1月12日
 import tensorflow as tf
 
 import utils.conf as conf
-from models.layers.roi_pooling.preprocess import roi_pooling
+from models.layers.pooling.preprocess import roi_align
 
 
-#    poi pooling层
-class ROIPooling(tf.keras.layers.Layer):
+#    poi align层
+class ROIAlign(tf.keras.layers.Layer):
     def __init__(self, 
-                 name=None, 
+                 name='ROIAlign', 
                  kernel_size=conf.FAST_RCNN.get_roipooling_kernel_size(), 
                  train_ycrt_queue=None, 
                  untrain_ycrt_queue=None,
@@ -28,7 +28,7 @@ class ROIPooling(tf.keras.layers.Layer):
             @param untrain_ycrt_queue: 非训练时当前批次的y数据
         '''
         #    该layer为dynamic layer。否则编译后两个queue的值不会更新
-        super(ROIPooling, self).__init__(name=name, input_shape=input_shape, dynamic=True, **kwargs)
+        super(ROIAlign, self).__init__(name=name, input_shape=input_shape, dynamic=True, **kwargs)
         
         self.__kernel_size = kernel_size
         self._train_ycrt_queue = train_ycrt_queue
@@ -40,9 +40,10 @@ class ROIPooling(tf.keras.layers.Layer):
         y_shape = None
         if (self._train_ycrt_queue): y_shape = self._train_ycrt_queue.crt_data().shape
         elif (self._untrain_ycrt_queue): y_shape = self._untrain_ycrt_queue.crt_data().shape
-        
-        _, num, C = y_shape[0], y_shape[1], input_shape[-1]
-        return (None, num, self.__kernel_size[0], self.__kernel_size[1], C)
+        #    取batch_size大小，每张图片proposal数量，cnns输出通道数
+        _, _, C = y_shape[0], y_shape[1], input_shape[-1]
+        #    roi_pooling的返回shap=(B * num, roi_ks[0], roi_ks[1], C)
+        return (None, self.__kernel_size[0], self.__kernel_size[1], C)
     
     #    前向
     def call(self, x, training=None, **kwargs):
@@ -53,6 +54,6 @@ class ROIPooling(tf.keras.layers.Layer):
         else:
             y = self._untrain_ycrt_queue.crt_data()
             pass
-        return roi_pooling(x, y, roipooling_ksize=self.__kernel_size)
+        return roi_align(x, y, roipooling_ksize=self.__kernel_size)
     
     pass
