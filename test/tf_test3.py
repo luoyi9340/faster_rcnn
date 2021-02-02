@@ -4,24 +4,16 @@
 @author: luoyi
 Created on 2021年1月28日
 '''
-import tensorflow as tf
-import collections as collections
 import numpy as np
+import math
 
 #    print时不用科学计数法表示
 np.set_printoptions(suppress=True)  
 
 
-a = tf.random.normal(shape=(1, 100000), mean=0, stddev=10)
-# print(a)
-mean, variance = tf.nn.moments(a, axes=-1) 
-print(mean, variance)
-a = tf.nn.batch_normalization(a,mean=mean,
-                                variance=variance,
-                                offset=0,
-                                scale=1,
-                                variance_epsilon=0)
-mean, variance = tf.nn.moments(a, axes=-1) 
-print(mean, variance)
-print(a[a > 1])
-
+tag = 10
+num = 4
+a = [math.floor(tag / num) for _ in range(num)]
+d = tag % num
+a = [a[i] + 1 if i < d else a[i] for i in range(len(a))]
+print(a)

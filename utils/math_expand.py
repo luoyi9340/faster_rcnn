@@ -9,6 +9,7 @@ import math
 import numpy as np
 import tensorflow as tf
 
+
 #    smootL1函数
 def smootL1_np(x):
     '''smootL1函数, numpy版本
@@ -45,14 +46,12 @@ def smootL1(x):
     return math.pow(x, 2) * 0.5 if math.fabs(x) < 1 else math.fabs(x) - 0.5
 
 
-# a = [[1, 1, 0],
-#      [1, -0.5, 1],
-#      [-1, 1, -0.8]]
-# a = np.array(a)
-# print(smootL1_np(a))
-# a = tf.convert_to_tensor(a)
-# print(smootL1_tf(a))
-
-# a = -0.5
-# print(smootL1(a))
+#    相对均匀分配数值给列表
+def fairly_equalize(tag, num):
+    '''要把tag均匀分成num份，每份该是多少（只能是整数）
+    '''
+    a = [math.floor(tag / num) for _ in range(num)]
+    d = tag % num
+    a = [a[i] + 1 if i < d else a[i] for i in range(len(a))]
+    return a
 

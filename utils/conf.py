@@ -80,6 +80,8 @@ def load_conf_yaml(yaml_path=CONF_PATH):
     
     fast_rcnn = FastRcnn(c['fast_rcnn']['roipooling_kernel_size'],
                          c['fast_rcnn']['loss_lamda'],
+                         c['fast_rcnn']['train_learning_rate'],
+                         c['fast_rcnn']['pooling'],
                          c['fast_rcnn']['fc_weights'],
                          c['fast_rcnn']['fc_dropout'],
                          c['fast_rcnn']['cnns'],
@@ -264,6 +266,8 @@ class FastRcnn():
     def __init__(self, 
                  roipooling_kernel_size=[7, 7],
                  loss_lamda=1,
+                 train_learning_rate=0.001,
+                 pooling='roi_algin',
                  fc_weights=4096,
                  fc_dropout=0.8,
                  cnns='resnet34',
@@ -271,6 +275,8 @@ class FastRcnn():
                  tensorboard_dir='logs/tensorboard/fast_rcnn'):
         self.__roipooling_kernel_size = roipooling_kernel_size
         self.__loss_lamda = loss_lamda
+        self.__train_learning_rate = train_learning_rate
+        self.__pooling = pooling
         self.__fc_weights = fc_weights
         self.__fc_dropout = fc_dropout
         self.__cnns = cnns
@@ -279,6 +285,8 @@ class FastRcnn():
         pass
     def get_roipooling_kernel_size(self): return self.__roipooling_kernel_size
     def get_loss_lamda(self): return self.__loss_lamda
+    def get_train_learning_rate(self): return self.__train_learning_rate
+    def get_pooling(self): return self.__pooling
     def get_fc_weights(self): return self.__fc_weights
     def get_fc_dropout(self): return self.__fc_dropout
     def get_cnns(self): return self.__cnns

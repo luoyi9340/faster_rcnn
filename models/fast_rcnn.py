@@ -14,7 +14,7 @@ from models.layers.resnet.models import ResNet34, ResNet50
 from models.layers.fast_rcnn.models import FastRCNNLayer
 from models.layers.fast_rcnn.losses import FastRcnnLoss
 from models.layers.fast_rcnn.metrics import FastRcnnMetricCls, FastRcnnMetricReg
-from models.layers.pooling.models import ROIAlign
+from models.layers.pooling.models import ROIAlign, ROIPooling
 
 
 
@@ -37,6 +37,7 @@ class FastRcnnModel(AModel):
                  cnns_name=conf.FAST_RCNN.get_cnns(),
                  scaling=conf.CNNS.get_feature_map_scaling(), 
                  cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
+                 pooling=conf.FAST_RCNN.get_pooling(),
                  fc_weights=conf.FAST_RCNN.get_fc_weights(),
                  fc_dropout=conf.FAST_RCNN.get_fc_dropout(),
                  roipooling_ksize=conf.FAST_RCNN.get_roipooling_kernel_size(),
@@ -52,6 +53,7 @@ class FastRcnnModel(AModel):
             @param cnns_name: 使用的cnns层名称
             @param scaling: cnns层的缩放比例。据此算出cnns层的深度
             @param cnns_base_channel_num: cnns层的基础通道数，据此算出cnns层的通道深度
+            @param pooling: pooling层实现方式（roi_algin(默认) | roi_pooling）
             @param fc_weights: fast_rcnn中fc层的参数维度
             @param fc_dropout: fast_rcnn中fc层dropout比率
             @param roipooling_kernel_size: roipooling的ksize
@@ -65,6 +67,7 @@ class FastRcnnModel(AModel):
         self.cnns = None
         self.rpn = None
         
+        self.__pooling = pooling
         self.__fc_weights = fc_weights
         self.__fc_dropout = fc_dropout
         self.__roipooling_ksize = roipooling_ksize
@@ -98,10 +101,17 @@ class FastRcnnModel(AModel):
                                  base_channel_num=self.__cnns_base_channel_num)
             pass
         
-        #    装配roi_pooling
-        self.roi_align = ROIAlign(input_shape=self.cnns.get_output_shape(),
+        #    装配pooling层
+        if (self.__pooling.lower() == 'roi_pooling'):
+            self.roi_align = ROIPooling(input_shape=self.cnns.get_output_shape(),
+                                        train_ycrt_queue=self._train_ycrt_queue,
+                                        untrain_ycrt_queue=self._untrain_ycrt_queue)
+            pass
+        else:
+            self.roi_align = ROIAlign(input_shape=self.cnns.get_output_shape(),
                                       train_ycrt_queue=self._train_ycrt_queue,
                                       untrain_ycrt_queue=self._untrain_ycrt_queue)
+            pass
         
         #    装配fast_rcnn
         self.fast_rcnn = FastRCNNLayer(training=self.__train_fast_rcnn,

@@ -106,11 +106,13 @@ rpn:
 fast_rcnn:
    #   roi pooling的kernel_size[H * W]
    roipooling_kernel_size: 
-      - 10
-      - 10
+      - 5
+      - 5
    #   loss = loss_cls + λ * loss_reg中间的那个λ
    loss_lamda: 0.1
    train_learning_rate: 0.001
+   #   pooling层用什么操作（可选值：roi_pooling | roi_algin[默认]）
+   pooling: roi_pooling
    #   每层全连接参数维度（同时确定fc层数）
    fc_weights: 
       - 1024

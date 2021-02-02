@@ -71,7 +71,9 @@ log.info('load val db finished.')
 
 
 log.info('load fast_rcnn model...')
-fast_rcnn_model = FastRcnnModel(cnns_name=conf.FAST_RCNN.get_cnns(),
+fast_rcnn_model = FastRcnnModel(learning_rate=conf.FAST_RCNN.get_train_learning_rate(),
+                                pooling=conf.FAST_RCNN.get_pooling(),
+                                cnns_name=conf.FAST_RCNN.get_cnns(),
                                 scaling=conf.CNNS.get_feature_map_scaling(), 
                                 cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
                                 fc_weights=conf.FAST_RCNN.get_fc_weights(),
