@@ -65,12 +65,12 @@ class FastRCNNLayer(tf.keras.layers.Layer):
         self.__fc_layers.add(tf.keras.layers.Flatten(name='fast_rcnn_fc_layers_flatten', input_shape=self.__input_shape))
         i = 0
         for fc_weight in fc_weights:
+            self.__fc_layers.add(tf.keras.layers.BatchNormalization(name='fast_rcnn_fc_layers_bn_' + str(i)))
             self.__fc_layers.add(tf.keras.layers.Dense(name='fast_rcnn_fc_layers_fc_' + str(i), 
                                                        units=fc_weight,
                                                        activation=tf.keras.activations.relu,
                                                        kernel_initializer=kernel_initializer,
                                                        bias_initializer=bias_initializer))
-            self.__fc_layers.add(tf.keras.layers.BatchNormalization(name='fast_rcnn_fc_layers_bn_' + str(i)))
             #    最后一层不追加dropout
             if (fc_dropout < 1 and fc_dropout > 0 \
                 and i < len(fc_weights) - 1):
