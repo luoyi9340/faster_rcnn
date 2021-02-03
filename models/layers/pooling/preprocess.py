@@ -54,6 +54,7 @@ def roi_pooling(fmaps, y_true, roipooling_ksize=[5, 5], op='max'):
                         ]
         @return: tensor(batch_size * num, roipooling_ksize[0], roipooling_ksize[1], C)
     '''
+    H, W = fmaps.shape[1], fmaps.shape[2]
     _, num = y_true.shape[0], y_true.shape[1]                               #    batch_size, 每个batch_size中的proposal数
     #    取所有的左上/右下坐标
     xl = tf.cast(tf.math.floor(y_true[:,:,1]), tf.int32)
@@ -79,6 +80,9 @@ def roi_pooling(fmaps, y_true, roipooling_ksize=[5, 5], op='max'):
             idx += 1
             pass
         
+        #    判断x+w, y+h是否过界
+        if (x + w > W): w = w - ((x + w) - W)
+        if (y + h > H): h = h - ((y + h) - H)
         proposal = tf.image.crop_to_bounding_box(image=crt_fmaps, 
                                                  offset_height=y, 
                                                  offset_width=x, 
