@@ -33,7 +33,7 @@ proposals:
    #   打乱数据的buffer_size是batch_size的多少倍. < 0表示不做打乱
    shuffle_buffer_rate: -1
    #   训练时每次取多少个样本，总样本数一定要是他的整数倍(RepeatDataset处理不了每轮epoch尾数不足的问题)
-   batch_size: 2
+   batch_size: 1
    #   训练多少个epochs
    epochs: 5
    
@@ -109,13 +109,13 @@ fast_rcnn:
       - 5
       - 5
    #   loss = loss_cls + λ * loss_reg中间的那个λ
-   loss_lamda: 0.1
+   loss_lamda: 1
    train_learning_rate: 0.001
    #   pooling层用什么操作（可选值：roi_pooling | roi_algin[默认]）
-   pooling: roi_pooling
+   pooling: roi_algin
    #   每层全连接参数维度（同时确定fc层数）
    fc_weights: 
-      - 1024
+      - 512
       - 512
       - 256
       - 128

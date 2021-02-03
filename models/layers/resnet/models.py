@@ -176,7 +176,7 @@ class ResNet34(tf.keras.layers.Layer):
         
         if (self.__num_layer >= 3):
             y = self.__layer3(y, training=training, mask=mask)
-            
+        
         if (self.__num_layer >= 4):
             y = self.__layer4(y, training=training, mask=mask)
         

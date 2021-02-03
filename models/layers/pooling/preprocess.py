@@ -60,7 +60,7 @@ def roi_pooling(fmaps, y_true, roipooling_ksize=[5, 5], op='max'):
     yl = tf.cast(tf.math.floor(y_true[:,:,2]), tf.int32)
     xr = tf.cast(tf.math.ceil(y_true[:,:,3]), tf.int32)
     yr = tf.cast(tf.math.ceil(y_true[:,:,4]), tf.int32)
-    rects = tf.stack([xl,yl, tf.abs(xr - xl),tf.abs(yr - yl)], axis=2)
+    rects = tf.stack([xl,yl, tf.abs(xr - xl) + 1,tf.abs(yr - yl) + 1], axis=2)              #    +1是为了修正坐标从0开始
     rects = tf.reshape(rects, shape=(rects.shape[0] * rects.shape[1], rects.shape[2]))
     
     proposal_fmaps = []

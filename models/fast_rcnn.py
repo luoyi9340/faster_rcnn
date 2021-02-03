@@ -66,8 +66,10 @@ class FastRcnnModel(AModel):
         self.__cnns_name = cnns_name
         self.cnns = None
         self.rpn = None
+        self.pooling = None
         
         self.__pooling = pooling
+
         self.__fc_weights = fc_weights
         self.__fc_dropout = fc_dropout
         self.__roipooling_ksize = roipooling_ksize
@@ -103,12 +105,12 @@ class FastRcnnModel(AModel):
         
         #    装配pooling层
         if (self.__pooling.lower() == 'roi_pooling'):
-            self.roi_align = ROIPooling(input_shape=self.cnns.get_output_shape(),
+            self.pooling = ROIPooling(input_shape=self.cnns.get_output_shape(),
                                         train_ycrt_queue=self._train_ycrt_queue,
                                         untrain_ycrt_queue=self._untrain_ycrt_queue)
             pass
         else:
-            self.roi_align = ROIAlign(input_shape=self.cnns.get_output_shape(),
+            self.pooling = ROIAlign(input_shape=self.cnns.get_output_shape(),
                                       train_ycrt_queue=self._train_ycrt_queue,
                                       untrain_ycrt_queue=self._untrain_ycrt_queue)
             pass
@@ -118,7 +120,7 @@ class FastRcnnModel(AModel):
                                        fc_weights=self.__fc_weights,
                                        fc_dropout=self.__fc_dropout)
         net.add(self.cnns)
-        net.add(self.roi_align)
+        net.add(self.pooling)
         net.add(self.fast_rcnn)
         pass
     
