@@ -196,12 +196,12 @@ class AModel(metaclass=abc.ABCMeta):
         callbacks = []
         #    如果需要每个epoch保存模型参数
         if (auto_save_weights_after_traind):
-            auto_save_file_path = auto_save_weights_dir + "/" + self.model_name() + ".h5"
+            auto_save_file_path = auto_save_weights_dir + "/" + self.model_name() + '_{epoch:02d}_{val_loss:.2f}' + ".h5"
             conf.mkfiledir_ifnot_exises(auto_save_file_path)
             auto_save_weights_callback = tf.keras.callbacks.ModelCheckpoint(filepath=auto_save_file_path,
                                                                             monitor="val_loss",         #    需要监视的值
                                                                             verbose=1,                      #    信息展示模式，0或1
-                                                                            save_best_only=True,            #    当设置为True时，将只保存在验证集上性能最好的模型，一般我们都会设置为True. 
+                                                                            save_best_only=False,           #    当设置为True时，将只保存在验证集上性能最好的模型，一般我们都会设置为True. 
                                                                             model='auto',                   #    ‘auto’，‘min’，‘max’之一，在save_best_only=True时决定性能最佳模型的评判准则，
                                                                                                             #    例如:
                                                                                                             #        当监测值为val_acc时，模式应为max，
