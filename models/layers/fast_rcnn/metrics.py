@@ -115,7 +115,11 @@ class FastRcnnMetricReg(tf.metrics.Metric):
         m = tf.math.reduce_mean(m)
         self.mae.assign(m)
         
-        tf.print('mae:', m, ' mae_x:', mae_x, ' mae_y:', mae_y, ' mae_w:', mae_w, ' mae_h:', mae_h, output_stream=logf.get_logger_filepath('fast_rcnn_metric'))
+        tf.print('mae_x:', mae_x, output_stream=logf.get_logger_filepath('fast_rcnn_metric'))
+        tf.print('mae_y:', mae_y, output_stream=logf.get_logger_filepath('fast_rcnn_metric'))
+        tf.print('mae_w:', mae_w, output_stream=logf.get_logger_filepath('fast_rcnn_metric'))
+        tf.print('mae_h:', mae_h, output_stream=logf.get_logger_filepath('fast_rcnn_metric'))
+        tf.print('mae:', m, output_stream=logf.get_logger_filepath('fast_rcnn_metric'))
         pass
     
     def result(self):
