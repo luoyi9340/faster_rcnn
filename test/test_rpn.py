@@ -30,7 +30,7 @@ model_conf_fpath = conf.RPN.get_save_weights_dir() + '/conf_rpn_resnet34.yml'
 model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5'
 
 #    加载当时训练的配置
-_, _, M_ROIS, M_RPN, M_CNNS, M_CTX, M_PROPOSALE = conf.load_conf_yaml(model_conf_fpath)
+_, _, M_ROIS, M_RPN, M_CNNS, M_CTX, M_PROPOSALE, M_fast_rcnn = conf.load_conf_yaml(model_conf_fpath)
 
 
 #    初始化RPN网络
@@ -46,6 +46,7 @@ rpn_model = rpn.RPNModel(cnns_name=M_RPN.get_cnns(),
 rpn_model.load_model_weight(model_fpath)
 #    设置cnns不参与训练
 rpn_model.cnns.trainable = False
+rpn_model.rpn.trainable = False
 rpn_model.show_info()
 
 

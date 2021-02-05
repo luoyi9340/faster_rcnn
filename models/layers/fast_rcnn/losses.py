@@ -50,7 +50,7 @@ class FastRcnnLoss(tf.losses.Loss):
         tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('fast_rcnn_loss'))
         (arrs, total, _, _) = takeout_sample_array(y_true, y_pred)
         loss = self.loss_cls(arrs) + self.__loss_lamda * self.loss_reg(y_true, arrs, total)
-        
+
         tf.print('loss:', loss, output_stream=logf.get_logger_filepath('fast_rcnn_loss'))
         return loss
 

@@ -7,6 +7,7 @@ Created on 2021年1月13日
 '''
 import tensorflow as tf
 import numpy as np
+import datetime
 
 import utils.logger_factory as logf
 
@@ -92,3 +93,36 @@ class AdjustLRWithBatchCallback(tf.keras.callbacks.Callback):
         pass
         
     pass
+
+
+takeup_time = {}
+#    打印耗时
+class TakeupTimeLayer(tf.keras.layers.Layer):
+    def __init__(self, time_key='def_time_key'):
+        '''打印耗时
+            @param model: 模型
+        '''
+        super(TakeupTimeLayer, self).__init__(trainable=False)
+        
+        self._time_key = time_key
+        pass
+    def call(self, inputs, training=None, **kwargs):
+        if (training):
+            if (takeup_time.get(self._time_key) is None):
+                takeup_time[self._time_key] = datetime.datetime.now()
+                pass
+            else:
+                start = takeup_time[self._time_key]
+                end = datetime.datetime.now()
+                takeup_time[self._time_key] = end
+                tf.print(self._time_key, ':', (end - start))
+                pass
+            pass
+        else:
+            takeup_time[self._time_key] = datetime.datetime.now()
+            pass
+        
+        return inputs
+    pass
+
+

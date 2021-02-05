@@ -30,6 +30,7 @@ rpn_model = RPNModel(cnns_name=M_RPN.get_cnns(),
 rpn_model.load_model_weight(model_fpath)
 #    设置cnns不参与训练
 rpn_model.cnns.trainable = False
+rpn_model.rpn.trainable = False
 
 
 #    建议框生成器

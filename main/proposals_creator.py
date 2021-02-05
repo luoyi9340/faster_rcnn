@@ -69,4 +69,14 @@ proposals_creator.create(proposals_out=conf.PROPOSALES.get_val_proposal_out(),
                          is_mutiple_file=conf.DATASET.get_label_val_mutiple(), 
                          count=conf.DATASET.get_count_val(), 
                          x_preprocess=lambda x:((x / 255.) - 0.5) * 2)
+#    生成测试集建议框
+proposals_creator.create(proposals_out=conf.PROPOSALES.get_test_proposal_out(),
+                         image_dir=conf.DATASET.get_in_test(), 
+                         label_path=conf.DATASET.get_label_test(), 
+                         is_mutiple_file=conf.DATASET.get_label_test_mutiple(), 
+                         count=conf.DATASET.get_count_test(), 
+                         x_preprocess=lambda x:((x / 255.) - 0.5) * 2)
+
+
+
 

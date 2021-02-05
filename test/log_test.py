@@ -5,6 +5,8 @@
 @author: luoyi
 Created on 2021年1月5日
 '''
+import datetime
+
 import utils.logger_factory as logf
 
 
@@ -14,4 +16,6 @@ log.info('test logger. str:%s num:%d', 'aaa', 18)
 log.warning('test warn msg1:{} msg2:{}'.format('aaa', 18))
 
 
-assert (33 > 32), '{} not gt {}'.format(1, 2)
+start = datetime.datetime.now()
+end = datetime.datetime.now()
+print('time:' + str(end - start))

@@ -47,14 +47,14 @@ class ROIAlign(tf.keras.layers.Layer):
     
     #    前向
     def call(self, x, training=None, **kwargs):
-        #    如果是训练阶段
+        #    取y值
         if (training):
             y = self._train_ycrt_queue.crt_data()
             pass
         else:
             y = self._untrain_ycrt_queue.crt_data()
             pass
-        
+        #    执行roi_algin
         return roi_align(x, y, roipooling_ksize=self.__kernel_size)
     pass
 

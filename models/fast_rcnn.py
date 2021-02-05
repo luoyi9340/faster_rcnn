@@ -135,6 +135,58 @@ class FastRcnnModel(AModel):
         return [FastRcnnMetricCls(), FastRcnnMetricReg()]
     
     
+    #    取测试集结果
+    def test(self, X, batch_size=2):
+        ''' 取测试集运算结果
+            @param X: 图片数据
+            @return: y_pred: tensor(batch_size*num, 5, 42)
+                                (batch_size*num, 0, 42)：每个proposal预测属于每个分类的概率
+                                (batch_size*num, 1, 42)：每个proposal的d[x]
+                                (batch_size*num, 2, 42)：每个proposal的d[y]
+                                (batch_size*num, 3, 42)：每个proposal的d[w]
+                                (batch_size*num, 4, 42)：每个proposal的d[h]
+        '''
+        y_pred = self._net.predict(X, batch_size=batch_size)
+        return y_pred
+    #    测试集分类评价(TN / total)
+    def test_cls(self, y_true, y_pred):
+        ''' 测试集分类准确率
+            @param y_true: tensor(batch_size, num, 9)
+                                1个批次代表1张图，1个num代表一张图的1个proposal
+                                [
+                                    [分类索引, proposal左上/右下点坐标(相对特征图), proposal偏移比/缩放比]
+                                    [vidx, xl,yl,xr,yr, tx,th,tw,th]
+                                    ...
+                                ]
+            @param y_pred: tensor(batch_size*num, 5, 42)
+                                (batch_size*num, 0, 42)：每个proposal预测属于每个分类的概率
+                                (batch_size*num, 1, 42)：每个proposal的d[x]
+                                (batch_size*num, 2, 42)：每个proposal的d[y]
+                                (batch_size*num, 3, 42)：每个proposal的d[w]
+                                (batch_size*num, 4, 42)：每个proposal的d[h]
+        '''
+        TN, total = FastRcnnMetricCls().tn_t(y_true, y_pred)
+        return TN / total
+    #    测试集回归评价(平均绝对误差)
+    def test_reg(self, y_true, y_pred):
+        ''' 测试集分类准确率
+            @param y_true: tensor(batch_size, num, 9)
+                                1个批次代表1张图，1个num代表一张图的1个proposal
+                                [
+                                    [分类索引, proposal左上/右下点坐标(相对特征图), proposal偏移比/缩放比]
+                                    [vidx, xl,yl,xr,yr, tx,th,tw,th]
+                                    ...
+                                ]
+            @param y_pred: tensor(batch_size*num, 5, 42)
+                                (batch_size*num, 0, 42)：每个proposal预测属于每个分类的概率
+                                (batch_size*num, 1, 42)：每个proposal的d[x]
+                                (batch_size*num, 2, 42)：每个proposal的d[y]
+                                (batch_size*num, 3, 42)：每个proposal的d[w]
+                                (batch_size*num, 4, 42)：每个proposal的d[h]
+        '''
+        mae_x, mae_y, mae_w, mae_h, m = FastRcnnMetricReg().mae_xywh(y_true, y_pred)
+        return mae_x, mae_y, mae_w, mae_h, m
+    
 #     #    训练步骤
 #     @tf.function(input_signature=step_signature())
 #     def train_step(self, x, y):

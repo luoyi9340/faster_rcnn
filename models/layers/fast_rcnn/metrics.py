@@ -22,6 +22,24 @@ class FastRcnnMetricCls(tf.metrics.Metric):
         self.acc = self.add_weight(name='cls_acc', initializer='zero', dtype=tf.float32)
         pass
     
+    #    取分类正确数量和总数
+    def tn_t(self, y_true, y_pred):
+        B = tf.math.count_nonzero(y_true[:,0,0] + 1)
+        num = y_true.shape[1]                   #    batch_size, 每个batch_size中的proposal数
+        total = B * num
+        
+        #    预测结果
+        prob = y_pred[:,0,:]
+        prob_idx = tf.argmax(prob, axis=1)
+        #    真实分类
+        true_idx = tf.cast(y_true[:,:,0], dtype=tf.int64)
+        true_idx = tf.reshape(true_idx, shape=(total,))
+        #    比较计算预测准确率
+        eq = tf.equal(prob_idx, true_idx)
+        T = tf.math.count_nonzero(eq)
+        
+        return T, total
+    
     def update_state(self, y_true, y_pred, sample_weight=None):
         '''
             @param y_true: tensor(batch_size, num, 9)
@@ -38,19 +56,7 @@ class FastRcnnMetricCls(tf.metrics.Metric):
                                 (batch_size*num, 3, 42)：每个proposal的d[w]
                                 (batch_size*num, 4, 42)：每个proposal的d[h]
         '''
-        B = tf.math.count_nonzero(y_true[:,0,0] + 1)
-        num = y_true.shape[1]                   #    batch_size, 每个batch_size中的proposal数
-        total = B * num
-        
-        #    预测结果
-        prob = y_pred[:,0,:]
-        prob_idx = tf.argmax(prob, axis=1)
-        #    真实分类
-        true_idx = tf.cast(y_true[:,:,0], dtype=tf.int64)
-        true_idx = tf.reshape(true_idx, shape=(total,))
-        #    比较计算预测准确率
-        eq = tf.equal(prob_idx, true_idx)
-        T = tf.math.count_nonzero(eq)
+        T, total = self.tn_t(y_true, y_pred)
         acc = tf.cast(T / total, dtype=tf.float32)
         self.acc.assign(acc)
         
@@ -81,22 +87,8 @@ class FastRcnnMetricReg(tf.metrics.Metric):
         self.mae = self.add_weight('reg_mae', initializer='zero', dtype=tf.float32)
         pass
     
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        '''
-            @param y_true: tensor(batch_size, num, 9)
-                                1个批次代表1张图，1个num代表一张图的1个proposal
-                                [
-                                    [分类索引, proposal左上/右下点坐标(相对特征图), proposal偏移比/缩放比]
-                                    [vidx, xl,yl,xr,yr, tx,th,tw,th]
-                                    ...
-                                ]
-            @param y_pred: tensor(batch_size*num, 5, 42)
-                                (batch_size*num, 0, 42)：每个proposal预测属于每个分类的概率
-                                (batch_size*num, 1, 42)：每个proposal的d[x]
-                                (batch_size*num, 2, 42)：每个proposal的d[y]
-                                (batch_size*num, 3, 42)：每个proposal的d[w]
-                                (batch_size*num, 4, 42)：每个proposal的d[h]
-        '''
+    #    计算平均绝对误差
+    def mae_xywh(self, y_true, y_pred):
         (arrs, total, _, _) = takeout_sample_array(y_true, y_pred)
         dx = arrs[:, 1]
         dy = arrs[:, 2]
@@ -113,6 +105,26 @@ class FastRcnnMetricReg(tf.metrics.Metric):
         mae_h = tf.abs(th - dh)
         m = mae_x + mae_y + mae_w + mae_h
         m = tf.math.reduce_mean(m)
+        
+        return mae_x, mae_y, mae_w, mae_h, m
+    
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        '''
+            @param y_true: tensor(batch_size, num, 9)
+                                1个批次代表1张图，1个num代表一张图的1个proposal
+                                [
+                                    [分类索引, proposal左上/右下点坐标(相对特征图), proposal偏移比/缩放比]
+                                    [vidx, xl,yl,xr,yr, tx,th,tw,th]
+                                    ...
+                                ]
+            @param y_pred: tensor(batch_size*num, 5, 42)
+                                (batch_size*num, 0, 42)：每个proposal预测属于每个分类的概率
+                                (batch_size*num, 1, 42)：每个proposal的d[x]
+                                (batch_size*num, 2, 42)：每个proposal的d[y]
+                                (batch_size*num, 3, 42)：每个proposal的d[w]
+                                (batch_size*num, 4, 42)：每个proposal的d[h]
+        '''
+        mae_x, mae_y, mae_w, mae_h, m = self.mae_xywh(y_true, y_pred)
         self.mae.assign(m)
         
         tf.print('mae_x:', mae_x, output_stream=logf.get_logger_filepath('fast_rcnn_metric'))
