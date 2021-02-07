@@ -105,6 +105,10 @@ class FastRcnnMetricReg(tf.metrics.Metric):
         mae_h = tf.abs(th - dh)
         m = mae_x + mae_y + mae_w + mae_h
         m = tf.math.reduce_mean(m)
+        mae_x = tf.math.reduce_mean(mae_x)
+        mae_y = tf.math.reduce_mean(mae_y)
+        mae_w = tf.math.reduce_mean(mae_w)
+        mae_h = tf.math.reduce_mean(mae_h)
         
         return mae_x, mae_y, mae_w, mae_h, m
     

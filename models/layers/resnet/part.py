@@ -117,17 +117,18 @@ class Bottleneck(tf.keras.layers.Layer):
         
         #    定义1*1, 3*3, 1*1卷积
         self.__conv = tf.keras.models.Sequential([
-                tf.keras.layers.Conv2D(name=name + '_Conv1', filters=filters[0], kernel_size=(1, 1), strides=1, padding='valid', input_shape=input_shape, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
                 tf.keras.layers.BatchNormalization(name=name + '_BN1', trainable=self.__training),
                 tf.keras.layers.ReLU(name=name + '_ReLU1', ),
+                tf.keras.layers.Conv2D(name=name + '_Conv1', filters=filters[0], kernel_size=(1, 1), strides=1, padding='valid', input_shape=input_shape, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
                 
-                tf.keras.layers.ZeroPadding2D(padding=1),
-                tf.keras.layers.Conv2D(name=name + '_Conv2', filters=filters[1], kernel_size=(3, 3), strides=strides, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
                 tf.keras.layers.BatchNormalization(name=name + '_BN2', trainable=self.__training),
                 tf.keras.layers.ReLU(name=name + '_ReLU2', ),
+                tf.keras.layers.ZeroPadding2D(padding=1),
+                tf.keras.layers.Conv2D(name=name + '_Conv2', filters=filters[1], kernel_size=(3, 3), strides=strides, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
                 
+                tf.keras.layers.BatchNormalization(name=name + '_BN3', trainable=self.__training),
+                tf.keras.layers.ReLU(name=name + '_ReLU3', ),
                 tf.keras.layers.Conv2D(name=name + '_Conv3', filters=filters[2], kernel_size=(1, 1), strides=1, padding='valid', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer, trainable=self.__training),
-                tf.keras.layers.BatchNormalization(name=name + '_BN3', trainable=self.__training)
             ])
         
         #    定义downsample。有一点原则，特征图体积缩小必然伴随通道数增加。否则体积与通道数都不变
@@ -157,7 +158,7 @@ class Bottleneck(tf.keras.layers.Layer):
             and self.__output_shape != tuple(filter(None, y_shape))):
                 raise Exception(self.name + "outputshape:" + str(self.__output_shape) + " not equal y:" + str(y.shape))
         
-        return tf.nn.relu(y)
+        return y
     pass
 
 

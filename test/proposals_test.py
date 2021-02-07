@@ -15,7 +15,7 @@ from models.rpn import RPNModel
 
 #    加载之前训练的RPN网络
 model_conf_fpath = conf.RPN.get_save_weights_dir() + '/conf_rpn_resnet34.yml'
-model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5'
+model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34_20_30.41.h5'
 _, _, M_ROIS, M_RPN, M_CNNS, M_CTX, M_PROPOSALS, M_FAST_RCNN = conf.load_conf_yaml(model_conf_fpath)
 #    初始化RPN网络
 rpn_model = RPNModel(cnns_name=M_RPN.get_cnns(), 
@@ -35,7 +35,7 @@ rpn_model.rpn.trainable = False
 
 #    建议框生成器
 proposals_creator = proposals.ProposalsCreator(threshold_nms_prob=0.5,
-                                               threshold_nms_iou=0.95,
+                                               threshold_nms_iou=0.9,
                                                proposal_iou=0.725,
                                                proposal_every_image=conf.PROPOSALES.get_proposal_every_image(),
                                                rpn_model=rpn_model)
@@ -86,7 +86,7 @@ def show_img(X, proposales, is_show_proposales=True, is_show_labels=True):
 #    打印平均每张图片能找到多少建议框
 # i = 0
 # for x, proposales in proposales_iter:
-#     print('idx:', i, ' proposales.count:', proposales.shape[0])
+#     print('idx:', i, ' proposales.count:', len(proposales))
 #     i += 1
 #     pass
 
@@ -97,7 +97,7 @@ for x, proposales in proposales_iter:
     if (idx < show_idx): 
         idx += 1
         continue
-         
+          
     show_img(x, proposales, is_show_proposales=True, is_show_labels=True)
     break
     pass

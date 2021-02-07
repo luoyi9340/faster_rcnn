@@ -27,7 +27,7 @@ np.set_printoptions(suppress=True)
 
 
 model_conf_fpath = conf.RPN.get_save_weights_dir() + '/conf_rpn_resnet34.yml'
-model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34.h5'
+model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34_20_30.41.h5'
 
 #    加载当时训练的配置
 _, _, M_ROIS, M_RPN, M_CNNS, M_CTX, M_PROPOSALE, M_fast_rcnn = conf.load_conf_yaml(model_conf_fpath)
@@ -87,8 +87,8 @@ X, Y = ds.load_XY_np(count=count,
 #    拿到测试数据全部的建议框
 fmaps = rpn_model.test(X, batch_size=conf.ROIS.get_batch_size())
 anchors = rpn_model.candidate_box_from_fmap(fmaps=fmaps, 
-                                            threshold_prob=0.5, 
-                                            threshold_iou=0.8)
+                                            threshold_prob=0.9, 
+                                            threshold_iou=0.9)
   
 #    在图上划出候选框与标签
 def show_anchors_labels(X, anchors, labels, show_labels=True, show_anchors=True):
@@ -112,7 +112,7 @@ def show_anchors_labels(X, anchors, labels, show_labels=True, show_anchors=True)
     if (show_anchors):
         print('anchors.count:', len(anchors))
         for a in anchors:
-#             print((a[1], a[2]), math.fabs(a[3] - a[1]), math.fabs(a[4] - a[2]))
+            print((a[1], a[2]), math.fabs(a[3] - a[1]), math.fabs(a[4] - a[2]))
             rect = plot.Rectangle((a[1], a[2]), math.fabs(a[3] - a[1]), math.fabs(a[4] - a[2]), fill=False, edgecolor='red', linewidth=1)
             ax.add_patch(rect)
             pass
@@ -126,5 +126,5 @@ def show_anchors_labels(X, anchors, labels, show_labels=True, show_anchors=True)
     pass
 
 idx = 1
-show_anchors_labels(X[idx], anchors[idx], Y[idx], show_labels=True, show_anchors=False)
+show_anchors_labels(X[idx], anchors[idx], Y[idx], show_labels=True, show_anchors=True)
 

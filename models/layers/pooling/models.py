@@ -104,6 +104,5 @@ class ROIPooling(tf.keras.layers.Layer):
         
         return roi_pooling(x, y, roipooling_ksize=self.__kernel_size, op='max')
     pass
-    pass
 
 

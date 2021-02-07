@@ -362,6 +362,9 @@ def fast_rcnn_tensor_db(image_dir=conf.DATASET.get_in_train(),
     return db, proposals_crt_batch_queue
 
 
+
+
+
 #    取总样本数
 def total_samples(proposal_out=conf.PROPOSALES.get_train_proposal_out(), 
                     is_proposal_mutiple_file=conf.DATASET.get_label_train_mutiple(), 

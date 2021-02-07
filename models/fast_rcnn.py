@@ -7,6 +7,7 @@ fast_rcnn模型
 Created on 2021年1月26日
 '''
 import tensorflow as tf
+import numpy as np
 
 import utils.conf as conf
 from models.abstract_model import AModel
@@ -186,6 +187,7 @@ class FastRcnnModel(AModel):
         '''
         mae_x, mae_y, mae_w, mae_h, m = FastRcnnMetricReg().mae_xywh(y_true, y_pred)
         return mae_x, mae_y, mae_w, mae_h, m
+    
     
 #     #    训练步骤
 #     @tf.function(input_signature=step_signature())
