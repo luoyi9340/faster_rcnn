@@ -7,7 +7,6 @@ fast_rcnn模型
 Created on 2021年1月26日
 '''
 import tensorflow as tf
-import numpy as np
 
 import utils.conf as conf
 from models.abstract_model import AModel
@@ -16,6 +15,7 @@ from models.layers.fast_rcnn.models import FastRCNNLayer
 from models.layers.fast_rcnn.losses import FastRcnnLoss
 from models.layers.fast_rcnn.metrics import FastRcnnMetricCls, FastRcnnMetricReg
 from models.layers.pooling.models import ROIAlign, ROIPooling
+from data.dataset_proposals import ProposalsCrtBatchQueue
 
 
 
@@ -47,8 +47,8 @@ class FastRcnnModel(AModel):
                  train_fast_rcnn=True,
                  is_build=False,
                  input_shape=(None, conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3),
-                 train_ycrt_queue=None,
-                 untrain_ycrt_queue=None,
+                 train_ycrt_queue=ProposalsCrtBatchQueue.default(),
+                 untrain_ycrt_queue=ProposalsCrtBatchQueue.default(),
                  **kwargs):
         '''
             @param cnns_name: 使用的cnns层名称

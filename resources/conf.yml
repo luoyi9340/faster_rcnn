@@ -101,8 +101,6 @@ rpn:
    nms_threshold_positives: 0.5
    #   nms中判定为重叠的最小IoU（大于此IoU的anchor会被判定为重叠而被过滤掉）
    nms_threshold_iou: 0.95
-   #   是否训练cnns
-   train_cnns: false
    
    
 #   fast_rcnn相关配置
@@ -130,8 +128,10 @@ fast_rcnn:
    save_weights_dir: temp/models/fast_rcnn
    #   tensorboard目录
    tensorboard_dir: logs/tensorboard/fast_rcnn
-   #   是否训练cnns
-   train_cnns: true
+   #   模型文件（与上面的接起来可组成完整模型路径）
+   model_path: FastRcnnModel_11_54.81.h5
+   #   模型配置（与save_weights_dir接起来可组成完整模型配置路径）
+   model_conf: conf_FastRcnnModel.yml
       
       
 #   CNNs网络相关配置

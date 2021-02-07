@@ -229,7 +229,15 @@ class ProposalsCrtBatchQueue():
         这里暂存最后迭代的batch_size个y_true，先进先出迭代顺序
         在数据源不使用'打乱'的前提下可保证layer中拿到的y_true是与当前训练数据对应的y_true
     '''
-    def __init__(self, batch_size=conf.PROPOSALES.get_batch_size(), dtype=tf.float32, ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9)):
+    def __init__(self, 
+                 batch_size=conf.PROPOSALES.get_batch_size(), 
+                 dtype=tf.float32, 
+                 ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9)):
+        '''
+            @param batch_size: queue的大小 == 批量大小
+            @param dtype: 数据类型
+            @param ymaps_shape: y数据形状。内每一个数据dtype=上面
+        '''
         self._queue = collections.deque(maxlen=batch_size)
         self._dtype = dtype
         
@@ -248,6 +256,14 @@ class ProposalsCrtBatchQueue():
     def crt_data(self):
         y = tf.convert_to_tensor(list(self._queue), dtype=self._dtype)
         return y
+    
+    #    默认值，初始化用
+    @staticmethod
+    def default(batch_size=conf.PROPOSALES.get_batch_size(), 
+                      dtype=tf.float32, 
+                      ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9)):
+        queue = ProposalsCrtBatchQueue(batch_size=batch_size, dtype=dtype, ymaps_shape=ymaps_shape)
+        return queue
     pass
 #    全局位置占个坑
 proposals_crt_batch = None

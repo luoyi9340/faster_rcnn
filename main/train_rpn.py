@@ -33,10 +33,6 @@ rpn_model = rpn.RPNModel(cnns_name=conf.RPN.get_cnns(),
                          train_rpn=True,
                          loss_lamda=conf.RPN.get_loss_lamda(),
                          is_build=True)
-#    如果cnns不参与训练
-if (conf.RPN.get_train_cnns() is False):
-    rpn_model.cnns.trainable = False
-    pass
 log.info('rpn_model finished.')
 log.info('rpn_model cnns_name:%s scaling:%d loss_lamda:%f', conf.RPN.get_cnns(), conf.CNNS.get_feature_map_scaling(), conf.RPN.get_loss_lamda())
 

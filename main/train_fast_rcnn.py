@@ -86,10 +86,6 @@ fast_rcnn_model = FastRcnnModel(learning_rate=conf.FAST_RCNN.get_train_learning_
                                 input_shape=(None, conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3),
                                 train_ycrt_queue=train_y_crt_queue,
                                 untrain_ycrt_queue=val_y_crt_queue)
-#    如果cnns不参与训练
-if (conf.FAST_RCNN.get_train_cnns() is False):
-    fast_rcnn_model.cnns.trainable = False
-    pass
 
 fast_rcnn_model.show_info()
 log.info('load fast_rcnn model finished.')

@@ -20,7 +20,8 @@ from models.layers.resnet.models import ResNet34, ResNet50
 
 #    RPN模型
 class RPNModel(models.AModel):
-    def __init__(self, cnns_name=conf.RPN.get_cnns(), 
+    def __init__(self, cnns=None,
+                        cnns_name=conf.RPN.get_cnns(), 
                         learning_rate=conf.RPN.get_train_learning_rate(),
                         scaling=conf.CNNS.get_feature_map_scaling(), 
                         K=conf.ROIS.get_K(),
@@ -32,6 +33,7 @@ class RPNModel(models.AModel):
                         input_shape=(None, conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3),
                         **kwargs):
         '''
+            @param cnns: 卷积层模型直接赋值，用于已经完成的模型继续训练，与cnns_name二选一，该参数优先
             @param cnns_name: 使用哪个cnns网络(resnet34 | resnet50)
             @param scaling: 特征图缩放比例
             @param train_cnns: cnns层是否参与训练
@@ -42,7 +44,7 @@ class RPNModel(models.AModel):
         self.__cnns_base_channel_num = cnns_base_channel_num
         
         self.__cnns_name = cnns_name
-        self.cnns = None
+        self.cnns = cnns
         self.rpn = None
         
         self.__train_cnns = train_cnns
@@ -85,12 +87,15 @@ class RPNModel(models.AModel):
     #    装配模型
     def assembling(self, net):
         #    选择CNNsNet
-        if (self.__cnns_name == 'resnet34'):
-            self.cnns = ResNet34(training=self.__train_cnns, scaling=self.__scaling, base_channel_num=self.__cnns_base_channel_num)
-            pass
-        #    默认resnet50
-        else:
-            self.cnns = ResNet50(training=self.__train_cnns, scaling=self.__scaling, base_channel_num=self.__cnns_base_channel_num)
+        if (self.cnns is None):
+            #    如果是resnet34
+            if (self.__cnns_name == 'resnet34'):
+                self.cnns = ResNet34(training=self.__train_cnns, scaling=self.__scaling, base_channel_num=self.__cnns_base_channel_num)
+                pass
+            #    默认resnet50
+            else:
+                self.cnns = ResNet50(training=self.__train_cnns, scaling=self.__scaling, base_channel_num=self.__cnns_base_channel_num)
+                pass
             pass
         
         #    创建RPNNet

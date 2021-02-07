@@ -9,6 +9,7 @@ Created on 2021年1月12日
 import tensorflow as tf
 
 import utils.conf as conf
+from data.dataset_proposals import ProposalsCrtBatchQueue
 from models.layers.pooling.preprocess import roi_align, roi_pooling
 
 
@@ -17,8 +18,8 @@ class ROIAlign(tf.keras.layers.Layer):
     def __init__(self, 
                  name='ROIAlign', 
                  kernel_size=conf.FAST_RCNN.get_roipooling_kernel_size(), 
-                 train_ycrt_queue=None, 
-                 untrain_ycrt_queue=None,
+                 train_ycrt_queue=ProposalsCrtBatchQueue.default(), 
+                 untrain_ycrt_queue=ProposalsCrtBatchQueue.default(),
                  input_shape=None,
                  **kwargs):
         '''roi align层
@@ -65,8 +66,8 @@ class ROIPooling(tf.keras.layers.Layer):
     def __init__(self,
                  name='ROIPooling', 
                  kernel_size=conf.FAST_RCNN.get_roipooling_kernel_size(), 
-                 train_ycrt_queue=None, 
-                 untrain_ycrt_queue=None,
+                 train_ycrt_queue=ProposalsCrtBatchQueue.default(), 
+                 untrain_ycrt_queue=ProposalsCrtBatchQueue.default(),
                  input_shape=None,
                  **kwargs):
         '''roi pooling层

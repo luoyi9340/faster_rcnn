@@ -70,8 +70,7 @@ def load_conf_yaml(yaml_path=CONF_PATH):
               c['rpn']['tensorboard_dir'],
               c['rpn']['cnns'],
               c['rpn']['nms_threshold_positives'],
-              c['rpn']['nms_threshold_iou'],
-              c['rpn']['train_cnns'])
+              c['rpn']['nms_threshold_iou'])
     
     cnns = CNNs(c['cnns']['feature_map_scaling'],
                 c['cnns']['base_channel_num'])
@@ -88,7 +87,9 @@ def load_conf_yaml(yaml_path=CONF_PATH):
                          c['fast_rcnn']['cnns'],
                          c['fast_rcnn']['save_weights_dir'],
                          c['fast_rcnn']['tensorboard_dir'],
-                         c['fast_rcnn']['train_cnns'])
+                         c['fast_rcnn']['model_path'],
+                         c['fast_rcnn']['model_conf'])
+    
     
     return c, dataset, rois, rpn, cnns, context, proposales, fast_rcnn
 
@@ -139,8 +140,7 @@ class Rpn():
                  tensorboard_dir="logs/tensorboard",
                  cnns='reset_34',
                  nms_threshold_positives=0.5,
-                 nms_threshold_iou=0.7,
-                 train_cnns=True):
+                 nms_threshold_iou=0.7):
         self.__train_learning_rate = train_learning_rate
         self.__loss_lamda = loss_lamda
         self.__save_weights_dir = save_weights_dir
@@ -148,7 +148,6 @@ class Rpn():
         self.__cnns = cnns
         self.__nms_threshold_positives = nms_threshold_positives
         self.__nms_threshold_iou = nms_threshold_iou
-        self.__train_cnns = train_cnns
         pass
     def get_train_learning_rate(self): return self.__train_learning_rate
     def get_loss_lamda(self): return self.__loss_lamda
@@ -157,7 +156,6 @@ class Rpn():
     def get_cnns(self): return self.__cnns
     def get_nms_threshold_positives(self): return self.__nms_threshold_positives
     def get_nms_threshold_iou(self): return self.__nms_threshold_iou
-    def get_train_cnns(self): return self.__train_cnns
     pass
 
 #    ROIS相关配置
@@ -278,7 +276,8 @@ class FastRcnn():
                  cnns='resnet34',
                  save_weights_dir='temp/models/fast_rcnn',
                  tensorboard_dir='logs/tensorboard/fast_rcnn',
-                 train_cnns=True):
+                 model_path='',
+                 model_conf=''):
         self.__roipooling_kernel_size = roipooling_kernel_size
         self.__loss_lamda = loss_lamda
         self.__train_learning_rate = train_learning_rate
@@ -288,7 +287,8 @@ class FastRcnn():
         self.__cnns = cnns
         self.__save_weights_dir = save_weights_dir
         self.__tensorboard_dir = tensorboard_dir
-        self.__train_cnns = train_cnns
+        self.__model_path = model_path
+        self.__model_conf = model_conf
         pass
     def get_roipooling_kernel_size(self): return self.__roipooling_kernel_size
     def get_loss_lamda(self): return self.__loss_lamda
@@ -299,7 +299,8 @@ class FastRcnn():
     def get_cnns(self): return self.__cnns
     def get_save_weights_dir(self): return convert_to_abspath(self.__save_weights_dir)
     def get_tensorboard_dir(self): return convert_to_abspath(self.__tensorboard_dir)
-    def get_train_cnns(self): return self.__train_cnns
+    def get_model_path(self): return self.__model_path
+    def get_model_conf(self): return self.__model_conf
     pass
 
 

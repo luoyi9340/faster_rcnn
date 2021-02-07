@@ -11,12 +11,22 @@ data_rois_creator:
    formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
    
    
-#   数据集相关日志
+#   rpn训练相关日志
 rpn_train:
    #   日志输出级别
    level: INFO
    #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
    out: logs/rpn/train.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+#   rpn微调相关日志
+rpn_fine_tuning:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/rpn/fine_tuning.log
    #   该log是否打印到控制台
    console: true
    #   log输出格式
