@@ -144,3 +144,6 @@ rpn_model.train_tensor_db(db_train, db_val,
 
 log.info('training RPNModel finished...')
 
+
+#   自定执行关机脚本
+os.system('sh /home/mist/shutdown.sh')
