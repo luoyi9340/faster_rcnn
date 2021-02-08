@@ -20,21 +20,24 @@ from models.layers.resnet.models import ResNet34, ResNet50
 
 #    RPN模型
 class RPNModel(models.AModel):
-    def __init__(self, cnns=None,
-                        cnns_name=conf.RPN.get_cnns(), 
-                        learning_rate=conf.RPN.get_train_learning_rate(),
-                        scaling=conf.CNNS.get_feature_map_scaling(), 
-                        K=conf.ROIS.get_K(),
-                        cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
-                        train_cnns=True,
-                        train_rpn=True,
-                        loss_lamda=10,
-                        is_build=True,
-                        input_shape=(None, conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3),
-                        **kwargs):
+    def __init__(self, 
+                 cnns=None,
+                 cnns_name=conf.RPN.get_cnns(), 
+                 rpn=None,
+                 learning_rate=conf.RPN.get_train_learning_rate(),
+                 scaling=conf.CNNS.get_feature_map_scaling(), 
+                 K=conf.ROIS.get_K(),
+                 cnns_base_channel_num=conf.CNNS.get_base_channel_num(),
+                 train_cnns=True,
+                 train_rpn=True,
+                 loss_lamda=10,
+                 is_build=True,
+                 input_shape=(None, conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3),
+                 **kwargs):
         '''
             @param cnns: 卷积层模型直接赋值，用于已经完成的模型继续训练，与cnns_name二选一，该参数优先
             @param cnns_name: 使用哪个cnns网络(resnet34 | resnet50)
+            @param rpn: 训练好的rpn层，用于继续训练
             @param scaling: 特征图缩放比例
             @param train_cnns: cnns层是否参与训练
             @param train_rpn: rpn层是否参与训练
@@ -45,7 +48,7 @@ class RPNModel(models.AModel):
         
         self.__cnns_name = cnns_name
         self.cnns = cnns
-        self.rpn = None
+        self.rpn = rpn
         
         self.__train_cnns = train_cnns
         self.__train_rpn = train_rpn
@@ -99,7 +102,9 @@ class RPNModel(models.AModel):
             pass
         
         #    创建RPNNet
-        self.rpn = RPNNet(training=self.__train_rpn, input_shape=self.cnns.get_output_shape(), K=self.__K, loss_lamda=self.__loss_lamda)
+        if (self.rpn is None):
+            self.rpn = RPNNet(training=self.__train_rpn, input_shape=self.cnns.get_output_shape(), K=self.__K, loss_lamda=self.__loss_lamda)
+            pass
         
         #    装配模型
         net.add(self.cnns)

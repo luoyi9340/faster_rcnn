@@ -101,6 +101,10 @@ rpn:
    nms_threshold_positives: 0.5
    #   nms中判定为重叠的最小IoU（大于此IoU的anchor会被判定为重叠而被过滤掉）
    nms_threshold_iou: 0.95
+   #   模型文件（与上面的接起来可组成完整模型路径）
+   model_path: rpn_resnet34_20_30.41.h5
+   #   模型配置（与save_weights_dir接起来可组成完整模型配置路径）
+   model_conf: conf_rpn_resnet34.yml
    
    
 #   fast_rcnn相关配置

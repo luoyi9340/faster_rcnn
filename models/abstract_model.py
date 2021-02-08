@@ -27,26 +27,25 @@ class AModel(metaclass=abc.ABCMeta):
         - 评价标准
         - 装备模型
     '''
-    def __init__(self, learning_rate=0.01, name="Model"):
+    def __init__(self, learning_rate=0.01, name="Model", auto_assembling=True):
         #    定义网络对象
         self._net = tf.keras.models.Sequential(name=name)
         
         self.name = name
         self.__learning_rate=learning_rate
         
-        #    装配网络模型
-        self.assembling(self._net)
-        
-        #    初始化优化器，损失，评价
-        self._optimizer = self.optimizer(net=self._net, learning_rate=learning_rate)
-        self._loss = self.loss()
-        self._metrics = self.metrics()
-        #    编译网络
-        self._net.compile(optimizer=self._optimizer, 
-                          loss=self._loss, 
-                          metrics=self._metrics)
-#         self._net.compile(optimizer=self.optimizer(learning_rate=learning_rate, net=self._net), 
-#                         loss=self.loss())
+        if (auto_assembling):
+            #    装配网络模型
+            self.assembling(self._net)
+            #    初始化优化器，损失，评价
+            self._optimizer = self.optimizer(net=self._net, learning_rate=learning_rate)
+            self._loss = self.loss()
+            self._metrics = self.metrics()
+            #    编译网络
+            self._net.compile(optimizer=self._optimizer, 
+                              loss=self._loss, 
+                              metrics=self._metrics)
+            pass
         pass
     
     #    测试

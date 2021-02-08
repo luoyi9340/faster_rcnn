@@ -70,7 +70,9 @@ def load_conf_yaml(yaml_path=CONF_PATH):
               c['rpn']['tensorboard_dir'],
               c['rpn']['cnns'],
               c['rpn']['nms_threshold_positives'],
-              c['rpn']['nms_threshold_iou'])
+              c['rpn']['nms_threshold_iou'],
+              c['rpn']['model_path'],
+              c['rpn']['model_conf'])
     
     cnns = CNNs(c['cnns']['feature_map_scaling'],
                 c['cnns']['base_channel_num'])
@@ -140,7 +142,9 @@ class Rpn():
                  tensorboard_dir="logs/tensorboard",
                  cnns='reset_34',
                  nms_threshold_positives=0.5,
-                 nms_threshold_iou=0.7):
+                 nms_threshold_iou=0.7,
+                 model_path='rpn_resnet34_20_30.41.h5',
+                 model_conf='conf_rpn_resnet34.yml'):
         self.__train_learning_rate = train_learning_rate
         self.__loss_lamda = loss_lamda
         self.__save_weights_dir = save_weights_dir
@@ -148,6 +152,8 @@ class Rpn():
         self.__cnns = cnns
         self.__nms_threshold_positives = nms_threshold_positives
         self.__nms_threshold_iou = nms_threshold_iou
+        self.__model_path = model_path
+        self.__model_conf = model_conf
         pass
     def get_train_learning_rate(self): return self.__train_learning_rate
     def get_loss_lamda(self): return self.__loss_lamda
@@ -156,6 +162,8 @@ class Rpn():
     def get_cnns(self): return self.__cnns
     def get_nms_threshold_positives(self): return self.__nms_threshold_positives
     def get_nms_threshold_iou(self): return self.__nms_threshold_iou
+    def get_model_path(self): return self.__model_path
+    def get_model_conf(self): return self.__model_conf
     pass
 
 #    ROIS相关配置

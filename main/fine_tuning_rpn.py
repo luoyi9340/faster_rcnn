@@ -28,7 +28,7 @@ log.info('load fast_rcnn model...')
 conf_path = conf.FAST_RCNN.get_save_weights_dir() + '/' + conf.FAST_RCNN.get_model_conf()
 _, F_dataset, F_rois, F_rpn, F_cnns, F_context, F_proposales, F_fast_rcnn = conf.load_conf_yaml(conf_path)
 model_path = conf.FAST_RCNN.get_save_weights_dir() + '/' + conf.FAST_RCNN.get_model_path()
-fast_rcnn_model = FastRcnnModel(learning_rate=F_fast_rcnn.get_train_learning_rate(),
+tr_fast_rcnn_model = FastRcnnModel(learning_rate=F_fast_rcnn.get_train_learning_rate(),
                                 pooling=F_fast_rcnn.get_pooling(),
                                 cnns_name=F_fast_rcnn.get_cnns(),
                                 scaling=F_cnns.get_feature_map_scaling(), 
@@ -44,16 +44,32 @@ fast_rcnn_model = FastRcnnModel(learning_rate=F_fast_rcnn.get_train_learning_rat
 #                                 train_ycrt_queue=None,
 #                                 untrain_ycrt_queue=None,
                                 )
-fast_rcnn_model.load_model_weight(model_path)
-fast_rcnn_model.cnns.trainable = False
-fast_rcnn_model.fast_rcnn.trainable = False
-#    从fast_rcnn中拿cnns模型
-fast_rcnn_model.show_info()
+tr_fast_rcnn_model.load_model_weight(model_path)
+tr_fast_rcnn_model.cnns.trainable = False
+tr_fast_rcnn_model.fast_rcnn.trainable = False
+# tr_fast_rcnn_model.show_info()
 
 
 log.info('load rpn model...')
+model_conf_fpath = conf.RPN.get_save_weights_dir() + '/' + conf.RPN.get_model_conf()
+model_fpath = conf.RPN.get_save_weights_dir() + '/' + conf.RPN.get_model_path()
+_, _, R_ROIS, R_RPN, R_CNNS, R_CTX, R_PRPPOSAL, R_FAST_RCNN = conf.load_conf_yaml(model_conf_fpath)
 #    用cnns加载rpn模型
-rpn_model = RPNModel(cnns=fast_rcnn_model.cnns, 
+tr_rpn_model = RPNModel(cnns_name=conf.RPN.get_cnns(), 
+                        learning_rate=conf.RPN.get_train_learning_rate(),
+                        scaling=conf.CNNS.get_feature_map_scaling(), 
+                        train_cnns=True,
+                        train_rpn=True,
+                        loss_lamda=conf.RPN.get_loss_lamda(),
+                        is_build=True)
+tr_rpn_model.load_model_weight(model_fpath)
+tr_rpn_model.cnns.trainable = False
+# tr_rpn_model.show_info()
+
+
+#    用fast_rcnn中的cnns和rpn中的rpn攒一个rpn模型继续训练
+rpn_model = RPNModel(cnns=tr_fast_rcnn_model.cnns, 
+                     rpn=tr_rpn_model.rpn,
                      learning_rate=conf.RPN.get_train_learning_rate(),
                      scaling=conf.CNNS.get_feature_map_scaling(), 
                      train_cnns=False,
