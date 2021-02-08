@@ -107,25 +107,30 @@ def show_msg(anchors_iterator):
 
         print('file_name:', fa['file_name'], ' positives:', len(fa['positives']), ' negative:', len(fa['negative']), ' lables:', len(fa['labels']))
         pass
-    print('avg_p:', num_p/num, ' avg_p_4l:', num_p_4l/num_4l, ' avg_p_5l:', num_p_5l/num_5l, ' avg_p_6l:', num_p_6l/num_6l)
+    avg_p = num_p/num if num > 0 else 0
+    avg_p_4l = num_p_4l/num_4l if num_4l > 0 else 0
+    avg_p_5l = num_p_5l/num_5l if num_5l > 0 else 0
+    avg_p_6l = num_p_6l/num_6l if num_6l > 0 else 0
+    print('avg_p:', avg_p, ' avg_p_4l:', avg_p_4l, ' avg_p_5l:', avg_p_5l, ' avg_p_6l:', avg_p_6l)
     pass
 
-
-rois_creator = rois.RoisCreator()
+roi_areas = [64, 68, 76, 80, 84, 92]
+roi_scales = [0.8, 1]
+rois_creator = rois.RoisCreator(roi_areas=roi_areas, roi_scales=roi_scales, cnns_feature_map_scaling=16)
 # # # rois_creator.create()
-# file_anchors = rois_creator.test_create(label_file_path=conf.DATASET.get_label_train(),
+file_anchors = rois_creator.test_create(label_file_path=conf.DATASET.get_label_train(),
 #                                         file_name='7f1119ea-66f9-4a35-888e-9c9a95c297b5', 
-#                                         count=10, 
-#                                         train_positives_iou=0.7,
-#                                         train_negative_iou=0.05)
-# fa = file_anchors[0]
-# show_anchors(fa, 
-#              is_show_positive=True, 
-#              is_show_negative=True, 
-#              is_show_labels=True, 
-#              is_show_anchors=False,
-#              is_show_anchors_center=False)
-
+                                        count=200, 
+                                        train_positives_iou=0.65,
+                                        train_negative_iou=0.3)
+fa = file_anchors[7]
+show_anchors(fa, 
+             is_show_positive=True, 
+             is_show_negative=False, 
+             is_show_labels=True, 
+             is_show_anchors=False,
+             is_show_anchors_center=True)
+# show_msg(file_anchors)
 
 
 
@@ -170,53 +175,25 @@ def show_rois(X, Y, show_P=True, show_N=True, show_L=True):
     pass
  
 #    读一个已经生成好的rois.jsons试一下
-image_dir = conf.DATASET.get_in_train()
-count = conf.DATASET.get_count_train()
-rois_out = conf.ROIS.get_train_rois_out()
-is_rois_mutiple_file = False
-count_positives = 48
-count_negative = 48
-batch_size = conf.ROIS.get_batch_size()
-db = rois.read_rois_generator(count, rois_out, is_rois_mutiple_file, image_dir, count_positives, count_negative, batch_size, 
-                                   x_preprocess=None, 
-                                   y_preprocess=None)
-
-show_idx = 1
-idx = 0
-for x, y in db:
-    if (idx >= show_idx):
-        show_rois(x, y, show_N=False)
-        break
-    idx += 1
-    pass
-
-#    计算原始数据中的tx, ty, tw, th
-# num = 0
-# total_tx = 0
-# total_ty = 0
-# total_tw = 0
-# total_th = 0
+# image_dir = conf.DATASET.get_in_train()
+# count = conf.DATASET.get_count_train()
+# rois_out = conf.ROIS.get_train_rois_out()
+# is_rois_mutiple_file = False
+# count_positives = 48
+# count_negative = 48
+# batch_size = conf.ROIS.get_batch_size()
+# db = rois.read_rois_generator(count, rois_out, is_rois_mutiple_file, image_dir, count_positives, count_negative, batch_size, 
+#                                    x_preprocess=None, 
+#                                    y_preprocess=None)
+# 
+# show_idx = 1
+# idx = 0
 # for x, y in db:
-#     y_true = y[y[:,9] > 0]
-#     num += 32
-#     Gx = y_true[:,10] + y_true[:,12]/2
-#     Gy = y_true[:,11] + y_true[:,13]/2
-#     Gw = y_true[:,12]
-#     Gh = y_true[:,13]
-#     Px = y_true[:,1]
-#     Py = y_true[:,2]
-#     Pw = y_true[:,3]
-#     Ph = y_true[:,4]
-#     tx = (Gx - Px) * Pw                    #    t[x] = (G[x] - P[x]) * P[w]
-#     ty = (Gy - Py) * Ph                    #    t[y] = (G[y] - P[y]) * P[h]
-#     tw = np.log(Gw / Pw)                   #    t[w] = log(G[w] / P[w])
-#     th = np.log(Gh / Ph)                   #    t[h] = log(G[h] / P[h])
-#     total_tx = np.sum(tx)
-#     total_ty = np.sum(ty)
-#     total_tw = np.sum(tw)
-#     total_th = np.sum(th)
+#     if (idx >= show_idx):
+#         show_rois(x, y, show_N=False)
+#         break
+#     idx += 1
 #     pass
-# print(np.around(total_tx / num), 4, np.around(total_ty / num, 4), np.around(total_tw / num, 4), np.around(total_th / num, 4))
 
 
 

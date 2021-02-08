@@ -115,7 +115,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer1 = (90, 240, filters_layer1)
 
         #    第2层
-        filters_layer2 = base_channel_num * 2
+        filters_layer2 = base_channel_num * 4
         if (self.__num_layer >= 2):
             self.__layer2 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer2_BasicBlock1', filters=[filters_layer2, filters_layer2], strides=1, input_shape=(90, 240, filters_layer1), output_shape=(90, 240, filters_layer2), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -126,7 +126,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer2 = (90, 240, filters_layer2)
         
         #    第3层
-        filters_layer3 = base_channel_num * 4
+        filters_layer3 = base_channel_num * 8
         if (self.__num_layer >= 3):
             self.__layer3 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer3_BasicBlock1', filters=[filters_layer3, filters_layer3], strides=2, input_shape=(90, 240, filters_layer2), output_shape=(45, 120, filters_layer3), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -138,7 +138,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer3 = (45, 120, filters_layer3)
         
         #    第4层
-        filters_layer4 = base_channel_num * 8
+        filters_layer4 = base_channel_num * 16
         if (self.__num_layer >= 4):
             self.__layer4 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer4_BasicBlock1', filters=[filters_layer4, filters_layer4], strides=2, input_shape=(45, 120, filters_layer3), output_shape=(23, 60, filters_layer4), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
@@ -152,7 +152,7 @@ class ResNet34(tf.keras.layers.Layer):
         self.output_shape_layer4 = (23, 60, filters_layer4)
         
         #    第5层
-        filters_layer5 = base_channel_num * 16
+        filters_layer5 = base_channel_num * 32
         if (self.__num_layer >= 5):
             self.__layer5 = tf.keras.models.Sequential([
                     BasicBlock(name=self.name + '_layer5_BasicBlock1', filters=[filters_layer5, filters_layer5], strides=2, input_shape=(23, 60, filters_layer4), output_shape=(12, 30, filters_layer5), kernel_initializer=self.__kernel_initializer, bias_initializer=self.__bias_initializer, trainable=self.__training),
