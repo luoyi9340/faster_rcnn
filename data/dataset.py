@@ -24,9 +24,16 @@ import json
 import os
 import numpy as np
 import PIL
+import tensorflow as tf
+import collections
 
+import data.part as part
 import utils.conf as conf
 import utils.alphabet as alphabet
+import utils.logger_factory as logf
+
+
+log = logf.get_logger('data_original')
 
 
 #    标签文件迭代器
@@ -170,3 +177,163 @@ def load_XY_np(count=100,
     if (x_preprocess): X = x_preprocess(X)
     if (y_preprocess): Y = y_preprocess(Y)
     return X, Y
+
+
+#    y数据暂存队列（先进先出）。自定义layer无法直接拿到y数据，这里迭代时就将y暂存进队列，需要时自取
+class OriginalCrtBatchQueue():
+    '''暂存当前迭代的batch_size个y_true
+        自定义的layer中拿不到y_true，但某些地方确实需要这部分数据（比如roi_pooling）
+        这里暂存最后迭代的batch_size个y_true，先进先出迭代顺序
+        在数据源不使用'打乱'的前提下可保证layer中拿到的y_true是与当前训练数据对应的y_true
+    '''
+    def __init__(self, 
+                 batch_size=conf.DATASET.get_batch_size(), 
+                 dtype=tf.float32, 
+                 ymaps_shape=[6, 5],
+                 ):
+        '''
+            @param batch_size: queue的大小 == 批量大小
+            @param dtype: 数据类型
+            @param ymaps_shape: y数据形状。内每一个数据dtype=上面
+        '''
+        self._queue = collections.deque(maxlen=batch_size)
+        self._dtype = dtype
+        
+        #    先填充一堆无用数据，过build
+        self.fill_empty(batch_size, ymaps_shape)
+        pass
+    #    先填充maxlen个无用数据，过build
+    def fill_empty(self, maxlen, ymaps_shape):
+        for _ in range(maxlen):
+            self._queue.append(tf.ones(shape=ymaps_shape))
+            pass
+        pass  
+    def push(self, y):
+        self._queue.append(y)
+        pass
+    def crt_data(self):
+        y = tf.convert_to_tensor(list(self._queue), dtype=self._dtype)
+        return y
+    
+    #    默认值，初始化用
+    @staticmethod
+    def default(batch_size=conf.PROPOSALES.get_batch_size(), 
+                      dtype=tf.float32, 
+                      ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9)):
+        queue = OriginalCrtBatchQueue(batch_size=batch_size, dtype=dtype, ymaps_shape=ymaps_shape)
+        return queue
+    pass
+
+
+#    文件迭代器
+def files_iterator(image_dir=conf.DATASET.get_in_train(),
+                   count=conf.DATASET.get_count_train(),
+                   y_path=conf.DATASET.get_label_train(),
+                   y_mutiple=conf.DATASET.get_label_train_mutiple(),
+                   x_preprocess=lambda x:((x / 255.) - 0.5) * 2,
+                   y_preprocess=None,
+                   y_queue=OriginalCrtBatchQueue.default(),
+                   ):
+    '''
+        @param image_dir: 图片文件目录
+        @param count: 每个文件读取多少张图片
+        @param y_path: 标签文件路径
+        @param y_mutiple: 标签文件是否多文件。多文件会从train.jsons0, train.jsons1...开始往后读，直到某个idx读不到为止。所以idx一定要连续
+        @param x_preprocess: x数据前置处理。默认：缩放到[-1, 1]之间
+        @param y_preprocess: 标签数据预处理。默认：什么都不做
+    '''
+    label_files = get_fpaths(y_mutiple, y_path)
+    for fpath in label_files:
+        readed = 0
+        while (readed <= count):
+            for line in open(fpath):
+                readed += 1
+                if (readed > count): break
+                
+                d = json.loads(line)
+                #    图片信息
+                fname = d['fileName']
+                x = part.read_image(image_path=image_dir + "/" + fname + '.png', 
+                                    resize_weight=conf.IMAGE_WEIGHT, 
+                                    resize_height=conf.IMAGE_HEIGHT, 
+                                    preprocess=x_preprocess)
+                
+                #    标注信息
+                annos = d['annos']
+#                 vcode = d['vcode']
+#                 scaling = 4. / len(vcode)
+                y = []
+                for anno in annos:
+                    vidx = alphabet.category_index(anno['key'])
+                    anno_x = anno['x']
+                    anno_y = anno['y']
+                    anno_w = anno['w']
+                    anno_h = anno['h']
+                    #    左上点x坐标，宽度按照比例缩放（所有的高度统一不参与缩放）
+#                     anno_x = anno_x * scaling
+#                     anno_w = anno_w * scaling
+                    y.append([vidx, anno_x, anno_y, anno_w, anno_h])
+                    pass
+                y = np.array(y, dtype=np.float32)
+                #    如果不够6个追加[-1]
+                if (y.shape[0] < 6):
+                    y = np.concatenate([y, -np.ones(shape=[6 - y.shape[0],5], dtype=np.float32)], axis=0)
+                    pass
+                if (y_preprocess): y = y_preprocess(y)
+                
+                y_queue.push(y)
+                yield x, y
+                pass
+            
+            #    如果循环结束了readed还是==0，说明文件是空的。直接跳出循环
+            if (readed == 0): 
+                log.warn('file is empty, %s', fpath)
+                break;
+            pass
+        pass
+    pass
+
+
+#    tensor迭代数据源
+def tensor_iterator_db(image_dir=conf.DATASET.get_in_train(),
+                       count=conf.DATASET.get_count_train(),
+                       y_path=conf.DATASET.get_label_train(),
+                       y_mutiple=conf.DATASET.get_label_train_mutiple(),
+                       x_preprocess=lambda x:((x / 255.) - 0.5) * 2,
+                       y_preprocess=None,
+                       batch_size=conf.DATASET.get_batch_size(),
+                       epochs=conf.DATASET.get_epochs(),
+                       shuffle_buffer_rate=conf.DATASET.get_shuffle_buffer_rate(),
+                       ):
+    '''tensor迭代数据源
+        @param image_dir: 图片文件目录
+        @param count: 每个文件读取多少张图片
+        @param y_path: 标签文件路径
+        @param y_mutiple: 标签文件是否多文件。多文件会从train.jsons0, train.jsons1...开始往后读，直到某个idx读不到为止。所以idx一定要连续
+        @param x_preprocess: x数据前置处理。默认：缩放到[-1, 1]之间
+        @param y_preprocess: 标签数据预处理。默认：什么都不做
+        @param batch_size: 批量大小
+        @param epochs: 训练epoch轮数
+        @param shuffle_buffer_rate: 打乱数据的buffer是batch_size的多少倍。<0表示不打乱
+    '''
+    x_shape = tf.TensorShape([conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3])
+    y_shape = tf.TensorShape([6, 5])        #    每张图最多6个验证码，vidx=-1表示填充值。[vidx, x,y, w,h]相对原图
+    y_queue = OriginalCrtBatchQueue.default(batch_size=batch_size, dtype=tf.float32, ymaps_shape=y_shape)
+    db = tf.data.Dataset.from_generator(generator=lambda :files_iterator(image_dir=image_dir,
+                                                                         count=count,
+                                                                         y_path=y_path,
+                                                                         y_mutiple=y_mutiple,
+                                                                         x_preprocess=x_preprocess,
+                                                                         y_preprocess=y_preprocess,
+                                                                         y_queue=y_queue,
+                                                                         ), 
+                                        output_types=(tf.float32, tf.float32), 
+                                        output_shapes=(x_shape, y_shape))
+    if (shuffle_buffer_rate > 0):
+        db = db.shuffle(buffer_size=shuffle_buffer_rate * batch_size)
+        pass
+    if (batch_size): db = db.batch(batch_size)
+    if (epochs): db = db.repeat(epochs)
+    return db, y_queue
+
+

@@ -18,6 +18,12 @@ dataset:
    count_test: 100
    label_test: /Users/irenebritney/Desktop/vcode/dataset/num_letter/test.jsons
    label_test_mutiple: false
+   #   训练时批量大小
+   batch_size: 2
+   #   训练epochs
+   epochs: 2
+   #   打乱数据的buffer_size是batch_size的多少倍. < 0表示不做打乱
+   shuffle_buffer_rate: -1
    
    
 #   建议框(proposal_box缩写)相关配置（初步训练的RPN网络生成建议框用于训练fast-rcnn网络）
@@ -96,7 +102,7 @@ rpn:
    #   tensorboard目录
    tensorboard_dir: logs/tensorboard/rpn
    #   用的什么cnns网络（resnet34 | resnet50）
-   cnns: resnet34
+   cnns: resnet50
    #   nms中判定为前景的最小置信度（大于此概率的anchor会被判定为前景）
    nms_threshold_positives: 0.5
    #   nms中判定为重叠的最小IoU（大于此IoU的anchor会被判定为重叠而被过滤掉）
@@ -136,6 +142,18 @@ fast_rcnn:
    model_path: FastRcnnModel_11_54.81.h5
    #   模型配置（与save_weights_dir接起来可组成完整模型配置路径）
    model_conf: conf_FastRcnnModel.yml
+   
+
+#   faster_rcnn相关配置
+faster_rcnn:
+   #   训练时的学习率
+   train_learning_rate: 0.0001
+   #   批量大小
+   batch_size: 4
+   #   epochs
+   epochs: 2
+   #   cnns
+   cnns: resnet34
       
       
 #   CNNs网络相关配置

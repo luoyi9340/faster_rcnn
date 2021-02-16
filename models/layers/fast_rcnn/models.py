@@ -46,7 +46,9 @@ class FastRCNNLayer(tf.keras.layers.Layer):
                  fc_dropout=conf.FAST_RCNN.get_fc_dropout(),
                  kernel_initializer=tf.initializers.he_normal(), 
                  bias_initializer=tf.initializers.Zeros(), 
-                 input_shape=(conf.FAST_RCNN.get_roipooling_kernel_size()[0], conf.FAST_RCNN.get_roipooling_kernel_size()[1], 256),
+                 input_shape=(conf.FAST_RCNN.get_roipooling_kernel_size()[0], 
+                              conf.FAST_RCNN.get_roipooling_kernel_size()[1], 
+                              conf.CNNS.get_feature_map_scaling() * conf.CNNS.get_base_channel_num()),
                  **kwargs):
         super(FastRCNNLayer, self).__init__(name=name, input_shape=input_shape, **kwargs)
         

@@ -385,13 +385,13 @@ class ResNet50(tf.keras.layers.Layer):
         if (self.__num_layer >= 5):
             y = self.__layer5(y, training=training, mask=mask)
         
-        #    检测输出的y与缩放比例是否一致
-        x_h, x_w = x.shape[1], x.shape[2]
+        #    检测输出的y与缩放比例是否一致(减掉padding的2)
+        x_h, x_w = x.shape[1]-2, x.shape[2]-2
         y_h, y_w = y.shape[1], y.shape[2]
         if (math.ceil(x_w / self.__scaling) != int(y_w)
             or math.ceil(x_h / self.__scaling) != int(y_h)):
             raise Exception(self.name + " scaling error. scaling:" + str(self.__scaling) + ". x.shape:" + str(x.shape) + " y.shape:" + str(y.shape))
-        
+       
         return y
     
     #    输出shape，根据缩放等级不同可能不一样

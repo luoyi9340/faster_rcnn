@@ -125,6 +125,70 @@ class ProposalsCreator():
         
         return x, res
     
+    #    直接通过anchors生成建议框
+    def create_from_anchors(self,
+                            labels=None,
+                            anchors=None):
+        '''直接通过给定的特征图生成proposals
+            @param labels: 特征图对应的标注信息
+            @param anchors: 原图生成的建议框
+        '''
+        vcode = labels[labels[:,0] > 0]
+        #         [正样本概率, xl,yl(左上点), xr,yr(右下点), 区域面积]
+        rect_srcs = np.zeros(shape=(anchors.shape[0], 4))
+        rect_srcs[:,0] = anchors[:,1]
+        rect_srcs[:,1] = anchors[:,2]
+        rect_srcs[:,2] = anchors[:,3]
+        rect_srcs[:,3] = anchors[:,4]
+        #    计算候选框与每个标签的IoU
+        labels_arrs = []
+        k_count = 0
+        for label in labels:
+            #    过滤掉之前填充的值
+            if label[0] < 0:
+                continue
+            
+            #    标签数据根据vcode长度做缩放
+            compressible_scaling = 4 / len(vcode)
+            label_x = label[1] * compressible_scaling
+            label_y = label[2]
+            label_w = label[3] * compressible_scaling
+            label_h = label[4]
+            
+            rect_tag = (label_x, label_y, label_x + label_w, label_y + label_h)
+            iou = part.iou_xlyl_xryr_np(rect_srcs, rect_tag)
+            #    取anchors中感兴趣的部分(xl,yl, xr,yr)，并按IoU降序排列，并追加label信息
+            #    提取感兴趣的部分(xl,yl, xr,yr)
+            idx_ = iou > self.__proposal_iou
+            label_anchprs = anchors[idx_][:, 1:5]
+            iou = iou[idx_]
+            iou = np.expand_dims(iou, axis=-1)
+            label_anchprs = np.concatenate([iou, label_anchprs], axis=1)
+            label_anchprs = label_anchprs[np.argsort(label_anchprs[:,0])[::-1]]
+            #    追加标签信息(vidx, x,y, w,h)
+            label_info = np.array([[alphabet.category_index(label[0]), label_x, label_y, label_w, label_h]])
+            label_info = np.repeat(label_info, label_anchprs.shape[0], axis=0)
+            label_anchprs = np.concatenate([label_anchprs, label_info], axis=1)
+            labels_arrs.append(label_anchprs.tolist())
+            k_count += 1
+            pass
+        #    每个label交替出现
+        tuple_arrs = tuple(labels_arrs)
+        alternate_zip = itertools.zip_longest(*tuple_arrs)
+        res = []
+        for r in alternate_zip:
+            for i in range(k_count):
+                if (r[i] is not None): res.append(r[i])
+                pass
+            pass
+        
+        #    如果数量超过了，截断。保留proposal_every_image*4的数据量，供配置用
+        if (len(res) > self.__proposal_every_image * 4):
+            res = res[:self.__proposal_every_image * 4]
+            pass
+        
+        return res
+    
     #    生成建议框
     def create(self, 
                proposals_out='',
@@ -180,6 +244,7 @@ class ProposalsCreator():
         
         log.info('create proposal finished. num_img:{} avg_proposals:{}'.format(num_img, num_proposals/num_img))
         pass
+    
     
     #    测试生成建议框
     def test_create(self, 

@@ -4,6 +4,7 @@
 @author: luoyi
 Created on 2021年1月28日
 '''
+import tensorflow as tf
 import numpy as np
 import math
 
@@ -11,9 +12,9 @@ import math
 np.set_printoptions(suppress=True)  
 
 
-tag = 10
-num = 4
-a = [math.floor(tag / num) for _ in range(num)]
-d = tag % num
-a = [a[i] + 1 if i < d else a[i] for i in range(len(a))]
+a = tf.reshape(tf.range(27), shape=(3,3,3))
 print(a)
+a = tf.math.reduce_mean(a, axis=(1,2))
+print(a)
+
+

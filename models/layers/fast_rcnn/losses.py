@@ -46,6 +46,7 @@ class FastRcnnLoss(tf.losses.Loss):
                                 (batch_size*num, 2, 42)：每个proposal的d[y]
                                 (batch_size*num, 3, 42)：每个proposal的d[w]
                                 (batch_size*num, 4, 42)：每个proposal的d[h]
+            @return tensor(batch_size * num, val)
         '''
         tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('fast_rcnn_loss'))
         (arrs, total, _, _) = takeout_sample_array(y_true, y_pred)
@@ -64,7 +65,7 @@ class FastRcnnLoss(tf.losses.Loss):
                             
             @param arrs: tensor(batch_size, num, 5) y_true中的vidx对应y_pred中的预测向量
                             [分类概率，dx, dy, dw, dh]
-            @return: loss_cls tensor(batch_size, 1)
+            @return: loss_cls tensor(batch_size*num, 1)
         '''
         #    1个42*5代表y_true中1条记录
         probs = arrs[:,0]                 #    y_true中的vidx在y_pred中对应的预测概率
@@ -90,7 +91,7 @@ class FastRcnnLoss(tf.losses.Loss):
                                 ]
             @param arrs: tensor(batch_size, num, 5) y_true中的vidx对应y_pred中的预测向量
                             [分类概率，dx, dy, dw, dh]
-            @return: loss_reg tensor(batch_size, 1)
+            @return: loss_reg tensor(batch_size*num, 1)
         '''
         #    取预测d[*]
         dx = arrs[:, 1]

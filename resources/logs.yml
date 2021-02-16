@@ -1,5 +1,15 @@
 #   日志相关配置
-#   数据集相关日志
+#   数据集
+data_original:
+   #   日志输出级别
+   level: INFO
+   #   日志输出目录（/开头表示机器绝对目录，非/开头表示项目根目录）
+   out: logs/data/original.log
+   #   该log是否打印到控制台
+   console: true
+   #   log输出格式
+   formatter: '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+#   rois数据集相关日志
 data_rois_creator:
    #   日志输出级别
    level: INFO

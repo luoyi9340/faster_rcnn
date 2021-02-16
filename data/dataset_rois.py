@@ -13,12 +13,14 @@ import numpy as np
 import concurrent.futures.thread as thread
 import itertools
 import random
+import collections
 
 import data.dataset as ds
 import data.part as part
 import utils.conf as conf
 import utils.alphabet as alphabet
 import utils.logger_factory as logf
+from data.dataset import OriginalCrtBatchQueue
 
 
 log = logf.get_logger('data_rois_creator')
@@ -157,6 +159,25 @@ class RoisCreator():
             threadPool.shutdown(5)
             pass
         return (num_labels, num_positives, num_negative)
+    
+    
+    #    从标签直接生成
+    def create_from_label(self, 
+                          labels=None,
+                          train_positives_iou=conf.ROIS.get_positives_iou(),
+                          train_negative_iou=conf.ROIS.get_negative_iou()):
+        '''
+            @param labels: 标签数据
+            @param train_positives_iou: 判正的IoU阈值。(>=此阈值的anchor会被判正)
+            @param train_negative_iou: 判负的IoU阈值。(<=此预祝的anchor会被判负)
+        '''
+        vcode = labels[labels[:,0] > 0]
+        anchors = self.__create_anchors(file_name='in_roi_creator', 
+                                        vcode=vcode, 
+                                        labels=labels, 
+                                        train_positives_iou=train_positives_iou, 
+                                        train_negative_iou=train_negative_iou)
+        return anchors
         
         
     #    测试方法
@@ -342,10 +363,50 @@ class RoisCreator():
     pass
 
 
-
-
-
-#    读上面creator生成的数据，组成tensor数据源
+#    rois暂存队列（自定义的layer层无法直接拿y值，这里暂存下来，layer中需要自取）
+class RoisCrtBatchQueue():
+    '''暂存当前迭代的batch_size个y_true
+        自定义的layer中拿不到y_true，但某些地方确实需要这部分数据（比如roi_pooling）
+        这里暂存最后迭代的batch_size个y_true，先进先出迭代顺序
+        在数据源不使用'打乱'的前提下可保证layer中拿到的y_true是与当前训练数据对应的y_true
+    '''
+    def __init__(self, 
+                 batch_size=conf.ROIS.get_batch_size(), 
+                 dtype=tf.float32, 
+                 ymaps_shape=(conf.ROIS.get_positives_every_image() + conf.ROIS.get_negative_every_image(), 10),
+                 ):
+        '''
+            @param batch_size: queue的大小 == 批量大小
+            @param dtype: 数据类型
+            @param ymaps_shape: y数据形状。内每一个数据dtype=上面
+        '''
+        self._queue = collections.deque(maxlen=batch_size)
+        self._dtype = dtype
+        
+        #    先填充一堆无用数据，过build
+        self.fill_empty(batch_size, ymaps_shape)
+        pass
+    #    先填充maxlen个无用数据，过build
+    def fill_empty(self, maxlen, ymaps_shape):
+        for _ in range(maxlen):
+            self._queue.append(tf.ones(shape=ymaps_shape))
+            pass
+        pass  
+    def push(self, y):
+        self._queue.append(y)
+        pass
+    def crt_data(self):
+        y = tf.convert_to_tensor(list(self._queue), dtype=self._dtype)
+        return y
+    
+    #    默认值，初始化用
+    @staticmethod
+    def default(batch_size=conf.PROPOSALES.get_batch_size(), 
+                      dtype=tf.float32, 
+                      ymaps_shape=(conf.PROPOSALES.get_proposal_every_image(), 9)):
+        queue = RoisCrtBatchQueue(batch_size=batch_size, dtype=dtype, ymaps_shape=ymaps_shape)
+        return queue
+    pass
 
 
 
@@ -358,7 +419,10 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                         count_negative=conf.ROIS.get_negative_every_image(),
                         batch_size=16,
                         x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
-                        y_preprocess=None):
+                        y_preprocess=None,
+                        rois_queue=None,
+                        y_queue=None,
+                        ):
     '''rpn网络单独训练数据集生成器
         x: 180*480*3 图片像素
         y: [
@@ -376,6 +440,8 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
         @param batch_size: 批量大小（P/N对半）
         @param x_preprocess: x数据预处理（默认归到-1 ~ 1之间）
         @param y_preprocess: y数据预处理
+        @param rois_queue: rois数据暂存
+        @param y_queue: 原始y数据暂存器
     '''
     label_files = ds.get_fpaths(is_rois_mutiple_file, rois_out)
     
@@ -395,6 +461,26 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                                     resize_weight=conf.IMAGE_WEIGHT, 
                                     resize_height=conf.IMAGE_HEIGHT, 
                                     preprocess=x_preprocess)
+                
+                #    如果y_queue非空，则暂存原始y数据
+                if (y_queue):
+                    labels = d['labels']
+                    y_original = []
+                    for anno in labels:
+                        vidx = alphabet.category_index(anno[0])
+                        anno_x = anno[1]
+                        anno_y = anno[2]
+                        anno_w = anno[3]
+                        anno_h = anno[4]
+                        y_original.append([vidx, anno_x, anno_y, anno_w, anno_h])
+                        pass
+                    y_original = np.array(y_original, dtype=np.float32)
+                    #    如果不够6个追加[-1]
+                    if (y_original.shape[0] < 6):
+                        y_original = np.concatenate([y_original, -np.ones(shape=[6 - y_original.shape[0],5], dtype=np.float32)], axis=0)
+                        pass
+                    y_queue.push(y_original)
+                    pass
                 
                 #    读取训练数据信息
                 #    取正样本，如果不足count_positives，用IoU=-1，其他全0补全
@@ -425,6 +511,8 @@ def read_rois_generator(count=conf.DATASET.get_count_train(),
                 assert (y.shape[0] == count_positives + count_negative), 'y.shape[0]:{} not equal count_positives+count_negative:{}'.format(y.shape[0], count_positives + count_negative)
                 if (y_preprocess): y = y_preprocess(y)
                 
+                #    保存暂存数据
+                if (rois_queue): rois_queue.push(y)
                 yield x, y
                 pass
             
@@ -448,7 +536,8 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
 #                         ymap_shape=(23, 60, 6, conf.ROIS.get_K()),
                         ymaps_shape=(conf.ROIS.get_positives_every_image() + conf.ROIS.get_negative_every_image(), 10),
                         x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
-                        y_preprocess=None):
+                        y_preprocess=None,
+                        ):
     '''rpn网络单独训练数据集
         @param image_dir: 图片文件目录
         @param count: 每个文件读取多少条记录，文件中记录数不够会循环此文件直到够数为止
@@ -473,7 +562,8 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
                                                                    count_positives=count_positives,
                                                                    count_negative=count_negative,
                                                                    x_preprocess=x_preprocess, 
-                                                                   y_preprocess=y_preprocess),
+                                                                   y_preprocess=y_preprocess,
+                                                                   ),
                                         output_types=(tf.float32, tf.float32),
                                         output_shapes=(x_shape, y_shape))
     if (shuffle_buffer_rate > 0):
@@ -482,6 +572,115 @@ def rpn_train_db(image_dir=conf.DATASET.get_in_train(),
     if (batch_size): db = db.batch(batch_size)
     if (epochs): db = db.repeat(epochs)
     return db
+
+
+#    rpn网络单独训练数据集，并暂存rois数据
+def rpn_train_db_with_roisqueue(image_dir=conf.DATASET.get_in_train(), 
+                                count=conf.DATASET.get_count_train(),
+                                rois_out=conf.ROIS.get_train_rois_out(), 
+                                is_rois_mutiple_file=False,
+                                count_positives=conf.ROIS.get_positives_every_image(),
+                                count_negative=conf.ROIS.get_negative_every_image(),
+                                batch_size=conf.ROIS.get_batch_size(), 
+                                shuffle_buffer_rate=conf.ROIS.get_shuffle_buffer_rate(),
+                                epochs=conf.ROIS.get_epochs(),
+#                                 ymap_shape=(23, 60, 6, conf.ROIS.get_K()),
+                                ymaps_shape=(conf.ROIS.get_positives_every_image() + conf.ROIS.get_negative_every_image(), 10),
+                                x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
+                                y_preprocess=None,
+                                ):
+    '''rpn网络单独训练数据集
+        @param image_dir: 图片文件目录
+        @param count: 每个文件读取多少条记录，文件中记录数不够会循环此文件直到够数为止
+        @param rois_out: rois.jsons文件路径
+        @param is_rois_mutiple_file: rois.jsons是否为多文件（多文件会从rois.jsons0开始直到遍历不到文件）
+        @param count_positives: 每张图片多少个正样本
+        @param count_negative: 每张图片多少个负样本
+        @param batch_size: 数据集的batch_size
+        @param epochs: 训练轮数
+        @param shuffle_size_rate: 打乱数据buffer_size是batch_size的多少倍。小于0表示不打乱
+        @param ymaps_shape: 特征图尺寸（参照one_hot做法会把label数据提前做成特征图的尺寸给到模型）
+        @param x_preprocess: 训练数据预处理
+        @param y_preprocess: 标签数据预处理（做成特征图尺寸就是在这里做的. 参考:rpn.preprocess.preprocess_like_fmaps）
+    '''
+    #    训练数据shape和标签数据shape
+    x_shape = tf.TensorShape([conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3])
+    y_shape = tf.TensorShape(ymaps_shape)
+    rois_queue = RoisCrtBatchQueue.default(batch_size, dtype=tf.float32, ymaps_shape=ymaps_shape)
+    db = tf.data.Dataset.from_generator(lambda:read_rois_generator(count=count,
+                                                                   rois_out=rois_out, 
+                                                                   is_rois_mutiple_file=is_rois_mutiple_file,
+                                                                   image_dir=image_dir, 
+                                                                   count_positives=count_positives,
+                                                                   count_negative=count_negative,
+                                                                   x_preprocess=x_preprocess, 
+                                                                   y_preprocess=y_preprocess,
+                                                                   rois_queue=rois_queue,
+                                                                   ),
+                                        output_types=(tf.float32, tf.float32),
+                                        output_shapes=(x_shape, y_shape))
+    if (shuffle_buffer_rate > 0):
+        db = db.shuffle(buffer_size=shuffle_buffer_rate * batch_size)
+        pass
+    if (batch_size): db = db.batch(batch_size)
+    if (epochs): db = db.repeat(epochs)
+    return db, rois_queue
+
+
+#    rpn网络单独训练数据集，并暂存rois数据，原始y数据
+def rpn_train_db_with_roisqueue_yqueue(image_dir=conf.DATASET.get_in_train(), 
+                                count=conf.DATASET.get_count_train(),
+                                rois_out=conf.ROIS.get_train_rois_out(), 
+                                is_rois_mutiple_file=False,
+                                count_positives=conf.ROIS.get_positives_every_image(),
+                                count_negative=conf.ROIS.get_negative_every_image(),
+                                batch_size=conf.ROIS.get_batch_size(), 
+                                shuffle_buffer_rate=conf.ROIS.get_shuffle_buffer_rate(),
+                                epochs=conf.ROIS.get_epochs(),
+#                                 ymap_shape=(23, 60, 6, conf.ROIS.get_K()),
+                                ymaps_shape=(conf.ROIS.get_positives_every_image() + conf.ROIS.get_negative_every_image(), 10),
+                                x_preprocess=lambda x:((x / 255.) - 0.5 ) * 2, 
+                                y_preprocess=None,
+                                ):
+    '''rpn网络单独训练数据集
+        @param image_dir: 图片文件目录
+        @param count: 每个文件读取多少条记录，文件中记录数不够会循环此文件直到够数为止
+        @param rois_out: rois.jsons文件路径
+        @param is_rois_mutiple_file: rois.jsons是否为多文件（多文件会从rois.jsons0开始直到遍历不到文件）
+        @param count_positives: 每张图片多少个正样本
+        @param count_negative: 每张图片多少个负样本
+        @param batch_size: 数据集的batch_size
+        @param epochs: 训练轮数
+        @param shuffle_size_rate: 打乱数据buffer_size是batch_size的多少倍。小于0表示不打乱
+        @param ymaps_shape: 特征图尺寸（参照one_hot做法会把label数据提前做成特征图的尺寸给到模型）
+        @param x_preprocess: 训练数据预处理
+        @param y_preprocess: 标签数据预处理（做成特征图尺寸就是在这里做的. 参考:rpn.preprocess.preprocess_like_fmaps）
+    '''
+    #    训练数据shape和标签数据shape
+    x_shape = tf.TensorShape([conf.IMAGE_HEIGHT, conf.IMAGE_WEIGHT, 3])
+    y_shape = tf.TensorShape(ymaps_shape)
+    rois_queue = RoisCrtBatchQueue.default(batch_size, dtype=tf.float32, ymaps_shape=ymaps_shape)
+    y_queue = OriginalCrtBatchQueue.default(batch_size, dtype=tf.float32, ymaps_shape=[6, 5])
+    db = tf.data.Dataset.from_generator(lambda:read_rois_generator(count=count,
+                                                                   rois_out=rois_out, 
+                                                                   is_rois_mutiple_file=is_rois_mutiple_file,
+                                                                   image_dir=image_dir, 
+                                                                   count_positives=count_positives,
+                                                                   count_negative=count_negative,
+                                                                   x_preprocess=x_preprocess, 
+                                                                   y_preprocess=y_preprocess,
+                                                                   rois_queue=rois_queue,
+                                                                   y_queue=y_queue,
+                                                                   ),
+                                        output_types=(tf.float32, tf.float32),
+                                        output_shapes=(x_shape, y_shape))
+    if (shuffle_buffer_rate > 0):
+        db = db.shuffle(buffer_size=shuffle_buffer_rate * batch_size)
+        pass
+    if (batch_size): db = db.batch(batch_size)
+    if (epochs): db = db.repeat(epochs)
+    return db, rois_queue, y_queue
+
 
 #    rpn网络测试数据集（只能跑测试集的分类ACC和回归MAE）
 def rpn_test_db(image_dir=conf.DATASET.get_in_train(), 

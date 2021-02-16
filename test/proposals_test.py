@@ -16,7 +16,7 @@ from models.rpn import RPNModel
 #    加载之前训练的RPN网络
 model_conf_fpath = conf.RPN.get_save_weights_dir() + '/conf_rpn_resnet34.yml'
 model_fpath = conf.RPN.get_save_weights_dir() + '/rpn_resnet34_20_30.41.h5'
-_, _, M_ROIS, M_RPN, M_CNNS, M_CTX, M_PROPOSALS, M_FAST_RCNN = conf.load_conf_yaml(model_conf_fpath)
+_, _, M_ROIS, M_RPN, M_CNNS, M_CTX, M_PROPOSALS, M_FAST_RCNN, _ = conf.load_conf_yaml(model_conf_fpath)
 #    初始化RPN网络
 rpn_model = RPNModel(cnns_name=M_RPN.get_cnns(), 
                          learning_rate=M_RPN.get_train_learning_rate(),
@@ -40,11 +40,12 @@ proposals_creator = proposals.ProposalsCreator(threshold_nms_prob=0.5,
                                                proposal_every_image=conf.PROPOSALES.get_proposal_every_image(),
                                                rpn_model=rpn_model)
 
-
+count = conf.DATASET.get_count_train()
+count = 10
 proposales_iter = proposals_creator.test_create(image_dir=conf.DATASET.get_in_train(), 
                                                 label_path=conf.DATASET.get_label_train(), 
                                                 is_mutiple_file=conf.DATASET.get_label_train_mutiple(), 
-                                                count=conf.DATASET.get_count_train(), 
+                                                count=count, 
                                                 x_preprocess=lambda x:((x / 255.) - 0.5) * 2)
 
 #    图片展示
@@ -91,7 +92,7 @@ def show_img(X, proposales, is_show_proposales=True, is_show_labels=True):
 #     pass
 
 #    在图片上展示找到的建议框
-show_idx = 25
+show_idx = 0
 idx = 0
 for x, proposales in proposales_iter:
     if (idx < show_idx): 

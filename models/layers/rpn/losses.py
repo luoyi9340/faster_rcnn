@@ -55,6 +55,7 @@ class RPNLoss(tf.keras.losses.Loss):
                                 (batch_size, h, w, 1, K)代表每个点的△y位移，K的顺序为area * scales
                                 (batch_size, h, w, 2, K)代表每个点的x缩放，K的顺序为area * scales
                                 (batch_size, h, w, 3, K)代表每个点的y缩放，K的顺序为area * scales
+            @return: tensor(batch_size, val)
         '''
         tf.print('--------------------------------------------------', output_stream=logf.get_logger_filepath('rpn_loss'))
         anchors = takeout_sample_array(y_true, y_pred)

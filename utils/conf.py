@@ -92,8 +92,13 @@ def load_conf_yaml(yaml_path=CONF_PATH):
                          c['fast_rcnn']['model_path'],
                          c['fast_rcnn']['model_conf'])
     
+    faster_rcnn = FasterRcnn(c['faster_rcnn']['train_learning_rate'],
+                             c['faster_rcnn']['batch_size'],
+                             c['faster_rcnn']['epochs'],
+                             c['faster_rcnn']['cnns'])
     
-    return c, dataset, rois, rpn, cnns, context, proposales, fast_rcnn
+    
+    return c, dataset, rois, rpn, cnns, context, proposales, fast_rcnn, faster_rcnn
 
 
 #    验证码识别数据集。为了与Java的风格保持一致
@@ -101,7 +106,8 @@ class Dataset:
     def __init__(self, 
                  in_train="", count_train=50000, label_train="", label_train_mutiple=False,
                  in_val="", count_val=10000, label_val="", label_val_mutiple=False,
-                 in_test="", count_test=10000, label_test="", label_test_mutiple=False):
+                 in_test="", count_test=10000, label_test="", label_test_mutiple=False,
+                 batch_size=2, epochs=2, shuffle_buffer_rate=-1):
         self.__in_train = convert_to_abspath(in_train)
         self.__count_train = count_train
         self.__label_train = convert_to_abspath(label_train)
@@ -116,6 +122,10 @@ class Dataset:
         self.__count_test = count_test
         self.__label_test = convert_to_abspath(label_test)
         self.__label_test_mutiple = label_test_mutiple
+        
+        self.__batch_size = batch_size
+        self.__epochs = epochs
+        self.__shuffle_buffer_rate = shuffle_buffer_rate
         pass
     def get_in_train(self): return convert_to_abspath(self.__in_train)
     def get_count_train(self): return self.__count_train
@@ -131,6 +141,10 @@ class Dataset:
     def get_count_test(self): return self.__count_test
     def get_label_test(self): return convert_to_abspath(self.__label_test)
     def get_label_test_mutiple(self): return self.__label_test_mutiple
+    
+    def get_batch_size(self): return self.__batch_size
+    def get_epochs(self): return self.__epochs
+    def get_shuffle_buffer_rate(self): return self.__shuffle_buffer_rate
     pass
 
 #    RPN相关配置
@@ -312,6 +326,25 @@ class FastRcnn():
     pass
 
 
+#    faster_rcnn相关配置
+class FasterRcnn():
+    def __init__(self,
+                 train_learning_rate=0.0001,
+                 batch_size=4,
+                 epochs=20,
+                 cnns='resnet34'):
+        self.__train_learning_rate = train_learning_rate
+        self.__batch_size = batch_size
+        self.__epochs = epochs
+        self.__cnns = cnns
+        pass
+    def get_train_learning_rate(self): return self.__train_learning_rate
+    def get_batch_size(self): return self.__batch_size
+    def get_epochs(self): return self.__epochs
+    def get_cnns(self): return self.__cnns
+    pass
+
+
 #    取配置的绝对目录
 def convert_to_abspath(path):
     '''取配置的绝对目录
@@ -341,7 +374,7 @@ def mkdir_ifnot_exises(_dir):
         os.makedirs(_dir)
     pass
 
-ALL_DICT, DATASET, ROIS, RPN, CNNS, CONTEXT, PROPOSALES, FAST_RCNN = load_conf_yaml()
+ALL_DICT, DATASET, ROIS, RPN, CNNS, CONTEXT, PROPOSALES, FAST_RCNN, FASTER_RCNN = load_conf_yaml()
 
 
 #    写入配置文件

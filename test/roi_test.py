@@ -116,14 +116,14 @@ def show_msg(anchors_iterator):
 
 roi_areas = [64, 68, 76, 80, 84, 92]
 roi_scales = [0.8, 1]
-rois_creator = rois.RoisCreator(roi_areas=roi_areas, roi_scales=roi_scales, cnns_feature_map_scaling=16)
+rois_creator = rois.RoisCreator(roi_areas=roi_areas, roi_scales=roi_scales, cnns_feature_map_scaling=8)
 # # # rois_creator.create()
 file_anchors = rois_creator.test_create(label_file_path=conf.DATASET.get_label_train(),
 #                                         file_name='7f1119ea-66f9-4a35-888e-9c9a95c297b5', 
-                                        count=200, 
+                                        count=10, 
                                         train_positives_iou=0.65,
                                         train_negative_iou=0.3)
-fa = file_anchors[7]
+fa = file_anchors[2]
 show_anchors(fa, 
              is_show_positive=True, 
              is_show_negative=False, 
